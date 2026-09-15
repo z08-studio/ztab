@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ztab: Tab Manager",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.",
   "permissions": ["tabs", "windows", "storage", "sidePanel", "tabGroups"],
   "background": {
