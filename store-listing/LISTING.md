@@ -1,6 +1,6 @@
 # Ztab store listing
 
-Prepared English copy for the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the listing has been submitted or published.
+Prepared English copy for the **2.0.0** update to the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
 
 ## Product name
 
@@ -65,15 +65,21 @@ Ztab requires no account and uses no external server. Pinned site origins, prefe
 
 GOOD TO KNOW
 
+Ztab 2.0 requires Chrome 123 or later.
+
 Ztab works between windows on the same computer and in the same Chrome profile. Regular tabs stay in their windows until you move or merge them. Only pinned apps are synchronized automatically; different pages on one site count as one pinned app. Existing pins keep their current page, while newly created pinned copies open the site's root URL. Use Unpin to remove a pinned app everywhere, because closing a pinned copy may cause it to return during synchronization.
 
 Merge here works between eligible normal windows in the same browsing mode. Chrome closes a source window when its last tab moves. Shared pinned copies are deduplicated; identical regular tabs stay open. There is no merge undo action.
 
 Ztab groups are independent of Chrome's native tab groups. Grouping and sorting change only Ztab's list. Saved is independent of Chrome bookmarks; it contains only pages you explicitly save. Incognito groups and Saved use a separate temporary library, cleared when the last incognito window closes.
 
-## Release notes — 1.1.1
+JOIN THE COMMUNITY
 
-Adds Tabs and Saved views, local groups, and batch actions to the Ztab workspace while retaining shared pinned tabs and cross-window navigation.
+Have a question, found a bug, or have an idea for Ztab? Join our Telegram community: https://t.me/z08_studio
+
+## Release notes — 2.0.0
+
+Ztab 2.0 brings inline groups, batch actions, and an independent Saved library to the side panel. Manage tabs across windows, keep shared pinned apps ready, and navigate with familiar keyboard shortcuts.
 
 • Groups related tabs across windows directly in Tabs, with drag grouping and Manual ordering
 • Sorts by recent use by default and keeps list positions stable during interaction
@@ -81,6 +87,8 @@ Adds Tabs and Saved views, local groups, and batch actions to the Ztab workspace
 • Keeps an independent Saved library with collections and website icons
 • Shows window and display names together when multiple monitors are connected
 • Keeps close actions visible, adds row dividers, and refreshes light and dark styles
+
+Group definitions and Saved pages remain across browser restarts. Live group membership, manual order, and recent-use records reset when Chrome or the extension restarts. This update does not add cloud sync or saved sessions.
 
 ## Permission justifications
 
