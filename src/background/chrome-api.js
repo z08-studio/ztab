@@ -216,6 +216,25 @@ export function getAllNormalWindowsWithTabs() {
     });
 }
 
+export function getDisplays() {
+    return new Promise((resolve) => {
+        if (!chrome.system?.display?.getInfo) {
+            resolve([]);
+            return;
+        }
+        try {
+            chrome.system.display.getInfo((displays) => {
+                // Display metadata is optional enrichment: unavailable hardware
+                // or permissions must not prevent the panel from managing tabs.
+                resolve(runtimeError() ? [] : displays || []);
+            });
+        }
+        catch {
+            resolve([]);
+        }
+    });
+}
+
 export function getPanelWindow() {
     return new Promise((resolve) => {
         chrome.windows.getCurrent({ populate: false }, (win) => resolve(runtimeError() ? null : win));

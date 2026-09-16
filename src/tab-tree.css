@@ -401,8 +401,44 @@ input::placeholder {
 
 .heading-left {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+}
+
+.window-title {
+    display: flex;
     gap: 7px;
     align-items: center;
+}
+
+.window-display {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.window-display svg {
+    width: 13px;
+    height: 13px;
+}
+
+.display-permission {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 12px 8px;
+    font-size: 11px;
+}
+
+.display-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .pinned-heading {
@@ -439,6 +475,7 @@ input::placeholder {
 }
 
 .merge-action {
+    flex-shrink: 0;
     white-space: nowrap;
 }
 

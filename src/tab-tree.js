@@ -4,13 +4,14 @@ import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
 import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
 import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
+import { createDisplayReader } from "./display-info.js";
 
 const state = {
     tree: [], currentWindowId: null, activeTabId: null, focusedTabId: null, incognito: false,
     workspace: emptyWorkspace(""), view: "tabs", query: { tabs: "", groups: "", saved: "" },
     scroll: { tabs: 0, groups: 0, saved: 0 }, collection: "all", pinnedExpanded: true,
     collapsedGroups: new Set(), selectedId: null, showPinnedTabs: true,
-    movingTabId: null, mergingWindowId: null, busy: false, shortcut: ""
+    movingTabId: null, mergingWindowId: null, busy: false, shortcut: "", canRequestDisplayNames: false
 };
 const elements = Object.fromEntries([
     "summary", "refresh", "keyboard-help", "mode-bar", "status", "tab-list", "search",
@@ -19,6 +20,7 @@ const elements = Object.fromEntries([
 let refreshTimer = null;
 let refreshGeneration = 0;
 let noticeVersion = 0;
+const displayReader = createDisplayReader({ onChange: scheduleRefresh });
 const allTabs = () => flattenTabTreeTabs(state.tree);
 const tabById = (id) => allTabs().find((tab) => tab.id === id);
 const groupById = (id) => state.workspace.groups.find((group) => group.id === id);
@@ -126,10 +128,10 @@ function renderTabRow(tab, inGroup = false) {
     const row = node("div", `tab-row${tab.pinned ? " pinned-row" : ""}${active ? " active-row" : ""}`);
     row.setAttribute("role", "listitem");
     const group = groupById(state.workspace.memberships[tab.id]);
-    const meta = [inGroup || tab.pinned ? tab.windowLabel : "", hostFromUrl(tab.url),
+    const meta = [inGroup || tab.pinned ? tab.windowLocation : "", hostFromUrl(tab.url),
         !inGroup && group ? group.name : "", tab.audible ? (tab.muted ? "Muted" : "Audio") : ""].filter(Boolean).join(" · ");
     const open = button("", `Open ${tab.title}`, () => activateTab(tab.id), "open-row");
-    open.title = `${tab.title}\n${tab.url}\n${tab.windowLabel}`;
+    open.title = `${tab.title}\n${tab.url}\n${tab.windowLocation}`;
     if (active)
         open.setAttribute("aria-current", "page");
     open.append(tabIcon(tab), rowCopy(tab.title, meta));
@@ -171,7 +173,15 @@ function empty(title, description, iconName) {
 function windowHeading(win, count) {
     const heading = node("div", `window-heading ${win.isCurrentWindow ? "current-heading" : "other-heading"}`);
     const left = node("span", "heading-left");
-    left.append(node("span", "", win.label), node("span", "count", String(count)));
+    const title = node("span", "window-title");
+    title.append(node("span", "", win.label), node("span", "count", String(count)));
+    left.append(title);
+    if (win.displayName) {
+        const display = node("span", "window-display");
+        display.title = win.displayName;
+        display.append(icon("monitor"), node("span", "display-name", win.displayName));
+        left.append(display);
+    }
     heading.append(left);
     if (!win.isCurrentWindow && state.currentWindowId !== null) {
         const current = state.tree.find((item) => item.isCurrentWindow);
@@ -188,6 +198,16 @@ function windowHeading(win, count) {
 
 function renderTabs() {
     const fragment = document.createDocumentFragment();
+    if (state.canRequestDisplayNames) {
+        const enable = button("Show display names", "Show display names", async () => {
+            await displayReader.requestNames();
+            setStatus("");
+            await refreshTree();
+        }, "text-button display-permission", "monitor");
+        enable.title = "Allow Chrome to show monitor names instead of display numbers";
+        enable.dataset.focusKey = "display-permission";
+        fragment.append(enable);
+    }
     const query = state.query.tabs.trim().toLowerCase();
     const pinned = getPinnedTabs(state.tree).filter((tab) => matchesTab(tab, query));
     let matches = 0;
@@ -312,8 +332,9 @@ function renderMove() {
     for (const target of targets) {
         const row = node("div", "target-row");
         row.setAttribute("role", "listitem");
-        const move = button("", `Move to ${target.label}`, () => confirmMove(target.id), "open-row");
-        move.append(rowCopy(target.label, `${target.tabCount} tabs`), node("span", "move-label", "Move here"));
+        const location = [target.label, target.displayName].filter(Boolean).join(" · ");
+        const move = button("", `Move to ${location}`, () => confirmMove(target.id), "open-row");
+        move.append(rowCopy(target.label, [target.displayName, counted(target.tabCount, "tab")].filter(Boolean).join(" · ")), node("span", "move-label", "Move here"));
         row.append(selectable(move, `target-${target.id}`, row));
         fragment.append(row);
     }
@@ -376,7 +397,7 @@ function switchView(view) {
 
 async function refreshTree({ preferActive = false } = {}) {
     const generation = ++refreshGeneration;
-    const [windows, host] = await Promise.all([getAllNormalWindowsWithTabs(), getPanelWindow()]);
+    const [windows, host, displayInfo] = await Promise.all([getAllNormalWindowsWithTabs(), getPanelWindow(), displayReader.read()]);
     if (!host)
         throw new Error("Could not find this panel's window. Reopen Ztab to try again.");
     const response = await sendMessage({ type: MESSAGE_WORKSPACE, windowId: host.id, operation: { action: "read" } });
@@ -386,7 +407,8 @@ async function refreshTree({ preferActive = false } = {}) {
     const scoped = windows.filter((win) => (win.incognito === true) === (host.incognito === true));
     state.currentWindowId = host.id;
     state.incognito = host.incognito === true;
-    state.tree = buildTabTreeModel(scoped, host.id);
+    state.tree = buildTabTreeModel(scoped, host.id, displayInfo.displays);
+    state.canRequestDisplayNames = displayInfo.canRequestNames;
     state.workspace = response.workspace;
     state.activeTabId = allTabs().find((tab) => tab.windowId === host.id && tab.active)?.id ?? null;
     state.focusedTabId = (scoped.find((win) => win.focused) || scoped.find((win) => win.id === host.id))?.tabs?.find((tab) => tab.active)?.id ?? null;
@@ -561,14 +583,15 @@ function groupDialog(group = null, preselected = []) {
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = selected.has(tab.id);
-        checkbox.setAttribute("aria-label", `Include ${tab.title} from ${tab.windowLabel}`);
+        checkbox.setAttribute("aria-label", `Include ${tab.title} from ${tab.windowLocation}`);
         checkbox.addEventListener("change", () => {
             if (checkbox.checked) selected.add(tab.id);
             else selected.delete(tab.id);
             count.textContent = `${selected.size} tabs selected · tabs stay in their windows`;
         });
         const existing = groupById(state.workspace.memberships[tab.id]);
-        const meta = [tab.windowLabel, tab.pinned ? "Pinned" : "", existing && existing.id !== group?.id ? `From ${existing.name}` : "", hostFromUrl(tab.url)].filter(Boolean).join(" · ");
+        const meta = [tab.windowLocation, tab.pinned ? "Pinned" : "", existing && existing.id !== group?.id ? `From ${existing.name}` : "", hostFromUrl(tab.url)].filter(Boolean).join(" · ");
+        choice.title = meta;
         choice.append(checkbox, rowCopy(tab.title, meta));
         choices.push({ choice, tab });
         list.append(choice);
@@ -697,6 +720,8 @@ async function init() {
     state.showPinnedTabs = resolveShowPinnedTabs(stored[STORAGE_SHOW_PINNED_TABS_KEY]);
     for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onMoved, chrome.tabs.onAttached, chrome.tabs.onDetached, chrome.tabs.onActivated, chrome.tabs.onReplaced, chrome.windows.onCreated, chrome.windows.onRemoved, chrome.windows.onFocusChanged])
         event.addListener(scheduleRefresh);
+    chrome.windows.onBoundsChanged?.addListener(scheduleRefresh);
+    chrome.system?.display?.onDisplayChanged?.addListener(scheduleRefresh);
     chrome.tabs.onUpdated.addListener((_id, changes) => {
         if (["title", "url", "favIconUrl", "pinned", "audible", "mutedInfo"].some((key) => key in changes) || changes.status === "complete")
             scheduleRefresh();

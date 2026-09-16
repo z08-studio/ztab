@@ -27,6 +27,12 @@ From the side panel, you can:
 - See updates automatically as tabs and windows change.
 - Search open tabs, create groups across windows, and keep an independent library of saved pages.
 
+With multiple displays connected, each window heading also shows its display name. The name updates when you move the window to another screen; windows spanning screens use the display containing the largest part of the window. Window numbers remain so you can distinguish multiple windows on the same display. Matching display names receive a number, and missing names fall back to **Display 1**, **Display 2**, and so on.
+
+The `system.display` permission reads display names and positions locally for these labels. Ztab does not change display settings. With one display, or when display information is unavailable, headings keep their usual window labels.
+
+If Chrome returns display numbers without names, select **Show display names** in Tabs and allow Chrome's **Manage windows on all your displays** request. This optional browser permission supplies system display names, including on macOS. Ztab only requests it after you select that action; declining keeps numbered labels available.
+
 ## Groups for related open tabs
 
 Create a group in **Groups**, choose its name and color, and select tabs from any window. Each open tab belongs to at most one Ztab group. These groups do not move tabs, reorder them, or change Chrome's native tab groups.

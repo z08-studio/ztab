@@ -1,5 +1,6 @@
 import { getTabUrl, isSyncWindow } from "./tab-utils.js";
 import { classifyWindowSnapshot, WINDOW_STATUS_ELIGIBLE } from "../background/window-eligibility.js";
+import { findWindowDisplay, normalizeDisplays } from "./displays.js";
 
 function byTabIndex(a, b) {
     return (a.index || 0) - (b.index || 0);
@@ -15,7 +16,8 @@ function byCurrentWindowThenId(currentWindowId) {
     };
 }
 
-export function buildTabTreeModel(windows, currentWindowId) {
+export function buildTabTreeModel(windows, currentWindowId, displayInfo = []) {
+    const displays = normalizeDisplays(displayInfo);
     const normalWindows = (Array.isArray(windows) ? windows : [])
         .filter(isSyncWindow)
         .filter((win) => typeof win.id === "number")
@@ -23,13 +25,17 @@ export function buildTabTreeModel(windows, currentWindowId) {
 
     return normalWindows.map((win, index) => {
         const isCurrentWindow = win.id === currentWindowId;
+        const label = isCurrentWindow ? "Current window" : `Window ${index + 1}`;
+        const displayName = displays.length > 1 ? findWindowDisplay(win, displays)?.name || "" : "";
+        const windowLocation = [label, displayName].filter(Boolean).join(" · ");
         const tabs = (Array.isArray(win.tabs) ? win.tabs : [])
             .filter((tab) => typeof tab.id === "number")
             .sort(byTabIndex)
             .map((tab) => ({
                 id: tab.id,
                 windowId: win.id,
-                windowLabel: isCurrentWindow ? "Current window" : `Window ${index + 1}`,
+                windowLabel: label,
+                windowLocation,
                 title: tab.title || getTabUrl(tab) || "Untitled",
                 url: getTabUrl(tab),
                 favIconUrl: tab.favIconUrl || "",
@@ -43,7 +49,8 @@ export function buildTabTreeModel(windows, currentWindowId) {
 
         return {
             id: win.id,
-            label: isCurrentWindow ? "Current window" : `Window ${index + 1}`,
+            label,
+            displayName,
             isCurrentWindow,
             incognito: win.incognito === true,
             mergeEligible: classifyWindowSnapshot(win) === WINDOW_STATUS_ELIGIBLE,
@@ -113,6 +120,7 @@ export function getMoveTargets(tree, sourceWindowId) {
         .map((win) => ({
             id: win.id,
             label: win.label,
+            ...(win.displayName ? { displayName: win.displayName } : {}),
             isCurrentWindow: win.isCurrentWindow,
             tabCount: (win.tabs || []).length
         }));

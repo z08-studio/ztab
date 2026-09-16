@@ -16,6 +16,8 @@ The tests cover:
   concurrent writes, stale edits, failed-write recovery, exclusive membership,
   last-active switching, undo conflicts, replacement tabs, restart boundaries,
   and incognito isolation/cleanup.
+- display assignment: overlapping windows, negative coordinates, duplicate/missing
+  names, unavailable displays, optional permission handling, and API failures.
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
@@ -55,6 +57,17 @@ Tabs, Groups, Saved, and editor dialogs were visually checked at 320px in light 
 4. Open two panels and make concurrent edits. Saving different pages must retain both. Stale saved-page/group editors must report a conflict without overwriting the newer edit.
 5. Suspend/restart the service worker: memberships should remain. Reload the extension or restart Chrome: Saved, collections, and group names should remain, while live membership clears. Normal and incognito libraries must remain separate, and closing all incognito windows clears the private library.
 6. Review Tabs, Groups, Saved, menus, and dialogs at 320px in light and dark modes. Ordinary close buttons must remain visible. Pinned rows must stay inside Tabs, remain collapsible, and expose no close button. Check empty states and long names/URLs.
+
+## Display-name checks in Chrome
+
+Verified on 2026-09-16 with Chrome for Testing 153.0.8010.12 on macOS in an isolated profile connected to three actual displays. The extension API returned empty names; accepting Chrome's window-management permission supplied **U27E40 (1)**, **U27E40 (2)**, and **Built-in Display**. The native 360px panel showed the correct name for each window, including the display at a negative desktop offset. Moving the panel's host and another window between screens updated labels without a manual refresh. Pinned rows also showed their window's display.
+
+The panel document was visually reviewed at 320px with no horizontal overflow. A native-panel dark-mode check at 320px used deliberately long label text to verify truncation and unobstructed merge buttons. A browser permission override verified that revocation restores numbered labels, the enable action explains a blocked permission, and restoring access restores names. Automated tests additionally cover explicit-request rejection and ensure ordinary refreshes do not request permission. The [display-name screenshot](../docs/screenshots/window-displays.png) is an actual native panel with local sample pages. Physical screen disconnect/reconnect and Windows/Linux behavior were not manually checked.
+
+1. With multiple screens, check window headings, pinned/group members, group selection, and move destinations. Window labels must remain distinct when windows share a screen.
+2. If names are missing, select **Show display names** and accept Chrome's prompt. Reload the panel; names should remain available. Decline or revoke access and verify that tabs remain usable with numbered labels.
+3. Move a window to another screen, then across a screen boundary. The largest intersecting display should determine its label. Check negative screen offsets and duplicate names.
+4. Connect or disconnect a display. A single active display should leave plain window headings. Check long display names at a narrow width; names should truncate without squeezing **Merge here**.
 
 ## Window-merge checks in Chrome
 

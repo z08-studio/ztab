@@ -17,6 +17,7 @@ Ztab, previously named TabSpan, runs entirely on your device.
 - In incognito windows, Groups and Saved use a separate in-memory session library. It is cleared when the last incognito window closes, or when Chrome or the extension restarts. Normal and incognito libraries are not combined.
 - Existing local storage is retained when the same installed extension is updated from TabSpan to Ztab.
 - Open tab titles and URLs are processed locally to show and manage tabs. Full titles and URLs are persisted only when you explicitly save a page; they are never uploaded by Ztab.
+- Display names and positions are read locally to identify the screen containing each window. They are not persisted or uploaded.
 
 ## Permissions
 
@@ -27,8 +28,11 @@ Ztab, previously named TabSpan, runs entirely on your device.
 | `storage` | Store pinned-site origins, synchronization metadata, panel preferences, groups, and the independent Saved library locally; keep private browsing data and session identifiers in memory. |
 | `sidePanel` | Show the cross-window tab manager inside Chrome's side panel. |
 | `tabGroups` | Preserve existing tab groups and their names, colors, and collapsed state when merging windows. |
+| `system.display` | Read display names and positions to label windows when multiple displays are connected. Ztab does not change display settings. |
 
 Ztab's own Groups are virtual groups of open tabs. Creating or editing one does not create or change a Chrome native tab group and requires no additional permission.
+
+When the extension API omits display names, **Show display names** requests Chrome's optional **Manage windows on all your displays** browser permission (`window-management`). It lets Ztab read system display labels through the Window Management API. Refreshing the panel does not request this permission automatically; declining leaves numbered labels available.
 
 ## Diagnostics
 
