@@ -13,11 +13,11 @@ import {
   STORAGE_SHOW_PINNED_TABS_KEY,
 } from "../src/background/constants.js";
 
-test("package metadata presents ztab as a cross-window tab manager", async () => {
+test("package metadata presents Ztab as a cross-window tab manager", async () => {
   const manifestUrl = new URL("../manifest.json", import.meta.url);
   const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
 
-  assert.equal(manifest.name, "ztab: Tab Manager");
+  assert.equal(manifest.name, "Ztab: Tab Manager");
   assert.equal(
     manifest.description,
     "Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.",

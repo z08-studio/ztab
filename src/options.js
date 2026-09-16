@@ -38,7 +38,7 @@ function initOptionsPage() {
         || !(copyDiagnosticsButton instanceof HTMLButtonElement)
         || !(panelShortcutEl instanceof HTMLElement)
         || !(customizeShortcutButton instanceof HTMLButtonElement)) {
-        throw new Error("ztab options page is missing required elements");
+        throw new Error("Ztab options page is missing required elements");
     }
 
     let actionStatusTimer = null;

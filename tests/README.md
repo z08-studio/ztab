@@ -1,4 +1,4 @@
-# ztab verification
+# Ztab verification
 
 Tests are run with Node's built-in test runner:
 
@@ -17,14 +17,16 @@ Real Chrome window metadata and UI behavior are still validated manually by load
 
 ## Rebrand and upgrade checks in Chrome
 
-These are checks to perform before publishing 1.1.0; the historical window-merge result below does not verify the rebrand.
+These are checks to perform before publishing a branding update; the historical window-merge result below does not verify the current branding.
 
-Verified on 2026-09-06 with Chrome for Testing 153.0.8010.12 on macOS in an isolated profile: the same-ID upgrade retained the hidden-pins preference; ztab branding and settings links appeared correctly; changing the assigned shortcut refreshed its hint after returning; the native shortcut opened the real side panel; ArrowDown and Enter selected and activated a tab in another window; ordinary pin/unpin synchronization and Move worked. The panel document also fit a 320px viewport without horizontal overflow. Store screenshots use the actual native side panel with local sample content.
+Verified on 2026-09-16 with Chrome for Testing 153.0.8010.12 on macOS in an isolated profile: the loaded extension reports **Ztab: Tab Manager** and **Open Ztab**; its native side-panel header, footer, settings page, and feedback copy use **Ztab**. The assigned shortcut opened the native panel, ArrowDown selected the next tab, and two sample pinned sites appeared in both normal windows. Store screenshots were recaptured from that real browser state and all five generated images were visually reviewed. This check does not verify store publication or store-delivered upgrades.
+
+Verified on 2026-09-06 with Chrome for Testing 153.0.8010.12 on macOS in an isolated profile: the same-ID upgrade retained the hidden-pins preference; the then-current branding and settings links appeared correctly; changing the assigned shortcut refreshed its hint after returning; the native shortcut opened the real side panel; ArrowDown and Enter selected and activated a tab in another window; ordinary pin/unpin synchronization and Move worked. The panel document also fit a 320px viewport without horizontal overflow. Store screenshots use the actual native side panel with local sample content.
 
 This smoke check does not verify store-delivered upgrades, Windows/Linux bindings, or a fresh manual Merge here run. Disable Playwright focus emulation before checking native focus and tab reactivation. Local review artifacts are in `output/playwright/`, including `verification.md`, `ztab-options.png`, and `ztab-320.png`; these are excluded from Git and the extension package.
 
-1. Load the prepared package in an isolated profile. Check that Chrome's extension list shows **ztab: Tab Manager**, the toolbar action says **Open ztab**, and the panel and options page use lowercase **ztab**.
-2. In a separate upgrade test, load the prior version at a fixed unpacked-extension path, pin sample sites, and turn off **Show pinned tabs**. Record the extension ID and local storage, replace the runtime files at the same path with 1.1.0, and reload. Verify that the ID, shared pinned set, and hidden-pins preference survive. Keep the existing `pinallwindows.*` storage keys.
+1. Load the prepared package in an isolated profile. Check that Chrome's extension list shows **Ztab: Tab Manager**, the toolbar action says **Open Ztab**, and the panel and options page use **Ztab** with a capital Z.
+2. In a separate upgrade test, load the prior version at a fixed unpacked-extension path, pin sample sites, and turn off **Show pinned tabs**. Record the extension ID and local storage, replace the runtime files at the same path with the prepared update, and reload. Verify that the ID, shared pinned set, and hidden-pins preference survive. Keep the existing `pinallwindows.*` storage keys.
 3. Confirm that normal pin/unpin behavior still works in two eligible windows and newly created pinned copies open the site's root URL. Open a new normal window and verify the same pinned set appears. Closing a pinned copy may restore it; unpinning must remove it from the shared set.
 4. Review the generated listing images and actual UI for old displayed names. Historical migration names, existing GitHub URLs, and internal compatibility identifiers are intentional exceptions.
 5. After the approved store update is published, separately verify an installed copy updates through the existing store item without losing its data. An unpacked-extension check does not verify store delivery.
@@ -32,7 +34,7 @@ This smoke check does not verify store-delivered upgrades, Windows/Linux binding
 ## Keyboard and interaction checks in Chrome
 
 1. Open the panel from the toolbar and with `Ctrl+Shift+9` on Windows/Linux or `Command+Shift+9` on macOS. If Chrome assigns a different shortcut or none, the displayed hint must reflect that assignment.
-2. Click the shortcut hint in the panel and **Customize shortcut** in settings. Both should open Chrome's extension shortcut settings. Change the assigned shortcut and return to each ztab page; verify that the displayed value refreshes.
+2. Click the shortcut hint in the panel and **Customize shortcut** in settings. Both should open Chrome's extension shortcut settings. Change the assigned shortcut and return to each Ztab page; verify that the displayed value refreshes.
 3. Focus the tab list. Press `↑` and `↓` to change the selected tab, then `Enter` to activate it and focus its window. Double-clicking a row should also activate it.
 4. Use `Tab` and `Shift+Tab` to reach controls, then activate buttons using the keyboard. Verify **Move**, **Close**, **Merge here**, **Refresh**, and the panel's **Settings** link remain reachable with visible focus.
 5. Open settings from the panel. Check the keyboard help and the **Show pinned tabs** preference at a narrow panel width; hiding pinned rows must leave synchronization running.

@@ -1,10 +1,10 @@
-# ztab store artwork
+# Ztab store artwork
 
 ## Positioning and visual direction
 
 **Another excellent tab manager for Chrome.**
 
-The artwork gives equal weight to ztab's three strengths: managing tabs across windows, keeping pinned tabs in sync across windows, and fast shortcuts with thoughtful interactions. The product name is always lowercase: **ztab**.
+The artwork gives equal weight to Ztab's three strengths: managing tabs across windows, keeping pinned tabs in sync across windows, and fast shortcuts with thoughtful interactions. The product name uses a capital Z: **Ztab**, following the Z-series naming convention.
 
 The established icon stays recognizable: two overlapping browser windows repeat the same coral, violet, and teal pinned tabs. Its dedicated 16 px source keeps the toolbar version legible. Promotional artwork uses deep indigo, restrained colored accents, and bundled Manrope typography.
 
@@ -41,7 +41,7 @@ Captions and promotional artwork are rendered from code, so new captures can rep
 
 ## Screenshot rules
 
-- Use current, real ztab behavior. Do not fabricate controls or results.
+- Use current, real Ztab behavior. Do not fabricate controls or results.
 - Keep personal URLs, account names, profile photos, bookmarks, and notifications out of the capture.
 - Capture the assigned shortcut shown by Chrome; users can customize it. Up/Down and Enter operate while the tab list is focused.
 - Put short captions in reserved space beside or above the product image, without covering useful UI.
@@ -50,7 +50,7 @@ Captions and promotional artwork are rendered from code, so new captures can rep
 
 ## Source provenance
 
-The current screenshots were captured on 2026-09-06 in Chrome for Testing using an isolated persistent Playwright profile with the unpacked ztab extension, then normalized to RGB PNG. The native Chrome side panel was opened with its actual assigned shortcut, `Shift+Command+9`. The pages, tab titles, and localhost URLs are harmless sample content served locally for the capture; the extension UI and browser tab state are real. The pinned-tab capture shows Inbox and Team calendar copies from two actual browser windows in one native side panel. The keyboard capture shows the selection after actual ArrowDown navigation; its final artwork magnifies a crop of that native panel.
+The current screenshots were captured on 2026-09-16 in Chrome for Testing 153.0.8010.12 using an isolated persistent Playwright profile with the unpacked Ztab extension, then normalized to RGB PNG. Native window captures show the capitalized **Ztab: Tab Manager** header and **Ztab** footer. The native Chrome side panel was opened with its actual assigned shortcut, `Shift+Command+9`. The pages, tab titles, and localhost URLs are harmless sample content served locally for the capture; the extension UI and browser tab state are real. The pinned-tab capture shows Inbox and Team calendar copies from two actual browser windows in one native side panel. The keyboard capture shows the selection after actual ArrowDown navigation; its final artwork magnifies a crop of that native panel.
 
 The active promotional window motifs, typography, and layouts are SVG composed by the repository renderer. The existing window-and-tabs icon is retained from the established visual system. Historical textless Tab Flow backgrounds were generated with OpenAI ImageGen but are not included in the current rendered assets.
 

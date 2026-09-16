@@ -118,7 +118,7 @@ function formatBytes(bytes) {
   return `${(bytes / 1024).toFixed(1)} KiB`;
 }
 
-console.log(`Packaging ztab ${manifest.version}`);
+console.log(`Packaging Ztab ${manifest.version}`);
 console.log("Running tests...");
 run(process.execPath, ["--test"]);
 

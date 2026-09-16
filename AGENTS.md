@@ -2,7 +2,8 @@
 
 ## Product identity
 
-- Product name: **ztab** (always lowercase); Chrome Web Store name: **ztab: Tab Manager**.
+- Product name: **Ztab** (capital Z, lowercase tab); Chrome Web Store name: **Ztab: Tab Manager**.
+- Z-series product names begin with a capital **Z**, such as **Zdraft** and **Ztab**. Use **Ztab** in displayed names and product copy; keep technical identifiers, package names, filenames, and URLs unchanged.
 - Positioning: **Another excellent tab manager for Chrome.**
 - Give equal weight to three capabilities: managing tabs across windows, keeping pinned tabs across windows, and keyboard shortcuts with thoughtful interactions.
 - Describe implemented behavior. Do not imply cross-device sync, saved sessions, or shortcuts that the product does not provide.
@@ -57,7 +58,7 @@ The extension needs no compilation step. Repackage after changes when practical 
 
 Keep one commit per complete logical change. Commit messages use `(type): (subject paragraph)`, with one lowercase type from `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`, or `ci`. Write a single 15–30 word paragraph in present tense that explains what changed and why, without a trailing period, filenames, code, or emojis.
 
-PR titles are at most 50 characters, begin with a capitalized word, and use lowercase afterward except for technical terms. Keep the ztab brand lowercase wherever it appears. Do not add a type prefix or final punctuation.
+PR titles are at most 50 characters, begin with a capitalized word, and use lowercase afterward except for technical terms. Keep the capital Z in the Ztab brand wherever it appears. Do not add a type prefix or final punctuation.
 
 Start the PR description with a concise problem and solution paragraph, followed by **Main changes:** and **Reviewer notes:**. Include concrete changes, test evidence, relevant manual checks, and screenshots for UI changes. State unverified Chrome behavior or pending external rollout steps clearly.
 
