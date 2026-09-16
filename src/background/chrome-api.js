@@ -30,9 +30,9 @@ export function openShortcutSettings() {
         });
     });
 }
-export function storageGet(keys) {
+export function storageGet(keys, area = "local") {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get(keys, (items) => {
+        chrome.storage[area].get(keys, (items) => {
             const error = runtimeError();
             if (error) {
                 reject(error);
@@ -42,9 +42,9 @@ export function storageGet(keys) {
         });
     });
 }
-export function storageSet(values) {
+export function storageSet(values, area = "local") {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.set(values, () => {
+        chrome.storage[area].set(values, () => {
             const error = runtimeError();
             if (error) {
                 reject(error);
@@ -54,9 +54,9 @@ export function storageSet(values) {
         });
     });
 }
-export function storageRemove(keys) {
+export function storageRemove(keys, area = "local") {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.remove(keys, () => {
+        chrome.storage[area].remove(keys, () => {
             const error = runtimeError();
             if (error) {
                 reject(error);
@@ -200,6 +200,60 @@ export function updateTab(tabId, updateInfo) {
                 return;
             }
             resolve(tab);
+        });
+    });
+}
+
+export function getAllNormalWindowsWithTabs() {
+    return new Promise((resolve, reject) => {
+        chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }, (windows) => {
+            const error = runtimeError();
+            if (error)
+                reject(error);
+            else
+                resolve(windows);
+        });
+    });
+}
+
+export function getPanelWindow() {
+    return new Promise((resolve) => {
+        chrome.windows.getCurrent({ populate: false }, (win) => resolve(runtimeError() ? null : win));
+    });
+}
+
+export function updateWindow(windowId, updateInfo) {
+    return new Promise((resolve, reject) => {
+        chrome.windows.update(windowId, updateInfo, (win) => {
+            const error = runtimeError();
+            if (error)
+                reject(error);
+            else
+                resolve(win);
+        });
+    });
+}
+
+export function createTab(createInfo) {
+    return new Promise((resolve, reject) => {
+        chrome.tabs.create(createInfo, (tab) => {
+            const error = runtimeError();
+            if (error)
+                reject(error);
+            else
+                resolve(tab);
+        });
+    });
+}
+
+export function sendMessage(message) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(message, (response) => {
+            const error = runtimeError() || (!response?.ok && new Error(response?.error || "The action could not be completed."));
+            if (error)
+                reject(error);
+            else
+                resolve(response);
         });
     });
 }

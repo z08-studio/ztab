@@ -14,7 +14,7 @@ Ztab was previously named TabSpan. The capital Z follows the Z-series naming con
 
 ## Every window in one side panel
 
-Click the Ztab toolbar icon to open a live tree of tabs from every normal Chrome window.
+Click the Ztab toolbar icon to open **Tabs**, **Groups**, and **Saved**. Tabs shows a live tree from normal Chrome windows in the same browsing mode.
 
 From the side panel, you can:
 
@@ -25,6 +25,23 @@ From the side panel, you can:
 - Close regular tabs without switching windows first.
 - Hide the pinned-tabs section when you want a more compact view.
 - See updates automatically as tabs and windows change.
+- Search open tabs, create groups across windows, and keep an independent library of saved pages.
+
+## Groups for related open tabs
+
+Create a group in **Groups**, choose its name and color, and select tabs from any window. Each open tab belongs to at most one Ztab group. These groups do not move tabs, reorder them, or change Chrome's native tab groups.
+
+Click a group name to jump to its last active tab and focus that window. Use the chevron to expand its members. The `···` menu on a tab lets you add it to a group, move it to another group, or remove it. **Ungroup** removes the group while keeping its tabs open; the notice offers **Undo**.
+
+Closing a tab removes its membership. Group names remain when empty. Members are tied to the current browser session and are cleared after a browser restart, extension reload, or update; groups are not saved sessions.
+
+## Saved pages, kept locally
+
+Choose **Save to Saved** from a tab's `···` menu, or **Save current tab** in Saved. HTTP(S) pages are stored in Ztab's own library, independently of Chrome bookmarks. A page is saved to **Unsorted** with its full URL, title, and save date. Saving the same full URL again opens its existing editor.
+
+Use collections and search to organize Saved. Edit a page to change its title, URL, or collection. Opening a saved page reuses an exact matching tab in the same browsing mode, or opens a new tab in the panel's window. The page remains in Saved. Removing a saved page offers **Undo**.
+
+Saved pages and collections remain across browser restarts. Incognito windows use a separate temporary library, cleared when all incognito windows close.
 
 ## One pinned workspace in every window
 
@@ -46,11 +63,14 @@ To hide pinned tabs from the side panel without changing synchronization, open t
 | Select a tab in the focused list | `↑` / `↓` |
 | Open the selected tab | `Enter` |
 | Move focus between controls | `Tab` / `Shift+Tab` |
-| Open a tab with the pointer | Double-click its row |
-| Move or close a regular tab | Use **Move** or **Close** beside that tab |
+| Open a tab with the pointer | Click its title |
+| Close a regular tab | Use the always-visible **×** beside that tab |
+| Save, group, or move a tab | Open its **···** menu |
+| Search the current view | `Command+F` / `Ctrl+F` while the panel has focus |
+| Switch views with the keyboard | Focus a view tab and use `←` / `→` |
 | Bring another window here | Use **Merge here** beside its heading |
 
-Click the opening shortcut in the panel or choose **Customize shortcut** in settings to open Chrome's extension shortcut settings. Ztab displays the currently assigned shortcut in the panel and settings, with navigation hints beside it. A **Settings** link in the panel gives you direct access to keyboard help and preferences. The list updates as your tabs and windows change, and the pinned-tabs section can be hidden to keep the panel compact.
+Open the keyboard button in the panel, then **Customize panel shortcut**, or choose **Customize shortcut** in settings to open Chrome's extension shortcut settings. The keyboard help displays the current assignment. A **Settings** link gives you access to preferences. Pinned tabs stay at the top of Tabs and can be collapsed with their chevron or hidden in settings.
 
 ## How to use Ztab
 
@@ -58,7 +78,9 @@ Click the opening shortcut in the panel or choose **Customize shortcut** in sett
 
 1. Open Ztab from the toolbar or keyboard shortcut.
 2. Find the window and tab you need in the side panel.
-3. Double-click a tab to open it, or use **Move** or **Close** for a regular tab.
+3. Click a tab title to open it, close a regular tab with **×**, or use **··· → Move to window…**.
+
+After closing a page, **Undo** reopens its URL and restores its Ztab group when possible. It does not restore navigation history or unsaved form entries.
 
 Select **Merge here** beside another window's heading to bring its tabs into the window hosting the side panel. Regular tabs are appended in their original order, tab groups stay together, and your current page stays selected. Existing pinned apps are kept, shared pinned copies are deduplicated by site, and unique pinned tabs are moved with their pinned state intact.
 
@@ -115,6 +137,7 @@ Only regular `http://` and `https://` pages are synchronized. Chrome internal pa
 Ztab requires no account and uses no external server.
 
 - Your pinned-site list, synchronization metadata, and panel preference are stored in Chrome's local extension storage.
+- Saved titles, full URLs, dates, collections, and group definitions are stored locally. Group membership is valid only for the current browser session.
 - Your tab titles and full browsing URLs are not uploaded.
 - Your browsing data is not sold or used for advertising.
 

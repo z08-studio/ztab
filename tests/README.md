@@ -12,6 +12,10 @@ The tests cover:
 - controller-level synchronization with a fake Chrome API.
 - window merging: ordering, groups, pinned duplicates, current-page selection,
   partial failures, changing tabs, window eligibility, and sync serialization.
+- independent Saved and virtual groups: full-URL validation and deduplication,
+  concurrent writes, stale edits, failed-write recovery, exclusive membership,
+  last-active switching, undo conflicts, replacement tabs, restart boundaries,
+  and incognito isolation/cleanup.
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
@@ -34,10 +38,23 @@ This smoke check does not verify store-delivered upgrades, Windows/Linux binding
 ## Keyboard and interaction checks in Chrome
 
 1. Open the panel from the toolbar and with `Ctrl+Shift+9` on Windows/Linux or `Command+Shift+9` on macOS. If Chrome assigns a different shortcut or none, the displayed hint must reflect that assignment.
-2. Click the shortcut hint in the panel and **Customize shortcut** in settings. Both should open Chrome's extension shortcut settings. Change the assigned shortcut and return to each Ztab page; verify that the displayed value refreshes.
-3. Focus the tab list. Press `↑` and `↓` to change the selected tab, then `Enter` to activate it and focus its window. Double-clicking a row should also activate it.
-4. Use `Tab` and `Shift+Tab` to reach controls, then activate buttons using the keyboard. Verify **Move**, **Close**, **Merge here**, **Refresh**, and the panel's **Settings** link remain reachable with visible focus.
+2. Open the keyboard button, then **Customize panel shortcut**, or **Customize shortcut** in settings. Both should open Chrome's extension shortcut settings. Change the assigned shortcut and return to each Ztab page; verify that the displayed value refreshes.
+3. Focus the tab list. Press `↑` and `↓` to change the selected tab, then `Enter` to activate it and focus its window. Clicking a tab title should also activate it.
+4. Use `Tab` and `Shift+Tab` to reach controls, then activate buttons using the keyboard. Verify **···**, **×**, **Merge here**, **Refresh**, and **Settings** remain reachable with visible focus. Open a menu with the keyboard, navigate it with arrows, and dismiss it with Escape. Focus a view tab and use Left/Right to switch views.
 5. Open settings from the panel. Check the keyboard help and the **Show pinned tabs** preference at a narrow panel width; hiding pinned rows must leave synchronization running.
+
+## Groups and Saved checks in Chrome
+
+Verified on 2026-09-16 in an isolated Chrome for Testing 153.0.8010.12 profile: cross-window virtual groups leave native group IDs unchanged; search, duplicate-save editing, collection creation/editing, removal/undo, close/reopen with group restoration, pinned collapse, keyboard selection, window movement, and a normal-window merge work with live tab data. The merge retained the current page and shared pinned copy, and produced no success notice. Saving the active page was also checked in Chrome's native side-panel document. After an extension reload, both saved pages, both group definitions, and pinned origins remained, while all four live memberships cleared and the browser-session identifier changed.
+
+Tabs, Groups, Saved, and editor dialogs were visually checked at 320px in light and dark modes with no horizontal overflow; the native panel was also inspected at 360px. [Tabs](../docs/screenshots/workspace-tabs.png), [Groups](../docs/screenshots/workspace-groups.png), [Saved](../docs/screenshots/workspace-saved.png), and [dark Groups](../docs/screenshots/workspace-groups-dark.png) are real extension renders with local sample pages. Current incognito isolation and worker-resume checks are covered by automated controller tests; a full browser restart, OS-level shortcut activation, and Windows/Linux behavior were not rechecked in this feature run.
+
+1. In two regular windows, create a Ztab group containing one tab from each. Verify IDs, positions, window IDs, and Chrome native `groupId` values remain unchanged. Change the active member from Chrome, then click the group title to return to it. The chevron should only expand/collapse.
+2. Search by group name, page title, and domain. Move a member to another Ztab group; check that it belongs to only one. Close a member and undo; ungroup and undo. Ungrouping must keep all tabs open. Empty group names should remain after their last member closes.
+3. Save a tab from its menu. Check that its full path/query/hash survives. Save it again and verify the existing editor opens. Create a collection, edit the saved title/collection, search/filter, open it without duplicating an existing tab, and remove/undo it.
+4. Open two panels and make concurrent edits. Saving different pages must retain both. Stale saved-page/group editors must report a conflict without overwriting the newer edit.
+5. Suspend/restart the service worker: memberships should remain. Reload the extension or restart Chrome: Saved, collections, and group names should remain, while live membership clears. Normal and incognito libraries must remain separate, and closing all incognito windows clears the private library.
+6. Review Tabs, Groups, Saved, menus, and dialogs at 320px in light and dark modes. Ordinary close buttons must remain visible. Pinned rows must stay inside Tabs, remain collapsible, and expose no close button. Check empty states and long names/URLs.
 
 ## Window-merge checks in Chrome
 
