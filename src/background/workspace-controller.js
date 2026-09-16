@@ -106,6 +106,9 @@ export function createWorkspaceController(dependencies = {}) {
     }
 
     function maintain(change = {}) {
+        // Capture event time before entering the queue; a slow browser or storage
+        // operation must not make an older visit appear more recent.
+        const occurredAt = now();
         return queue.enqueue("workspace_tabs_changed", async () => {
             const windows = await api.getAllNormalWindowsWithTabs();
             const session = await sessionId();
@@ -124,6 +127,12 @@ export function createWorkspaceController(dependencies = {}) {
                 const activatedId = change.tabId ?? windows.find((win) => win.id === change.windowId)?.tabs?.find((tab) => tab.active)?.id;
                 if (tabs.some((tab) => tab.id === activatedId))
                     rememberActiveTab(record.workspace, activatedId);
+                const focusedWindow = windows.find((win) => win.focused === true && isSyncWindow(win) && (win.incognito === true) === incognito);
+                const focusedTab = focusedWindow?.tabs?.find((tab) => tab.active === true && !tab.pinned);
+                const isFocusedVisit = focusedTab && activatedId === focusedTab.id &&
+                    (change.windowId === undefined || change.windowId === focusedWindow.id);
+                if (isFocusedVisit && Number.isFinite(occurredAt) && occurredAt >= 0)
+                    record.workspace.recentActivity[focusedTab.id] = Math.max(record.workspace.recentActivity[focusedTab.id] ?? 0, occurredAt);
                 await persist(record, record.workspace);
             }
         });
@@ -144,7 +153,7 @@ export function createWorkspaceController(dependencies = {}) {
             if (change.pinned !== undefined)
                 update();
         });
-        events.tabs.onActivated.addListener(({ tabId }) => update({ tabId }));
+        events.tabs.onActivated.addListener(({ tabId, windowId }) => update({ tabId, windowId }));
         events.tabs.onReplaced.addListener((addedId, removedId) => update({ addedId, removedId }));
         events.windows.onRemoved.addListener(() => update());
         events.windows.onFocusChanged.addListener((windowId) => update({ windowId }));

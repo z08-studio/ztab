@@ -1,6 +1,6 @@
 // Pointer capture keeps dragging inside the panel, including while its list
 // scrolls. Mutations are delegated to the workspace's single background writer.
-export function createTabDragController({ root, list, ungroupZone, canDrag, describeTab, groupName, onStart, onDrop, onEnd, onError }) {
+export function createTabDragController({ root, list, ungroupZone, canDrag, canReorder = () => true, describeTab, groupName, onStart, onDrop, onEnd, onError }) {
     let pointer = null;
     let dragging = false;
     let target = null;
@@ -20,7 +20,7 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, desc
         if (!target) return;
         target.element.dataset.drop = target.ready ? target.mode : "pending";
         target.element.querySelector(".drag-hint")?.remove();
-        const label = target.ready ? target.label : "Hold to group";
+        const label = target.ready || target.blocked ? target.label : "Hold to group";
         if (label) {
             const hint = document.createElement("span");
             hint.className = "drag-hint";
@@ -34,7 +34,7 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, desc
         const key = `${next.mode}:${next.tabId ?? next.groupId ?? ""}`;
         if (target?.key === key) return;
         clearTarget();
-        target = { ...next, key, ready: !next.wait };
+        target = { ...next, key, ready: !next.wait && !next.blocked };
         paintTarget();
         if (next.wait) {
             hoverTimer = setTimeout(() => {
@@ -68,6 +68,10 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, desc
         const edge = y < 8 ? "before" : y > rect.height - 8 ? "after" : null;
         const sameGroup = tab.groupId && tab.groupId === pointer.source.groupId;
         if (edge || sameGroup) {
+            if (!canReorder()) {
+                chooseTarget({ mode: "sorted", tabId: tab.id, element: row, blocked: true, label: "Choose Manual order to rearrange" });
+                return;
+            }
             chooseTarget(tab.groupId || tab.windowId === pointer.source.windowId
                 ? { mode: edge || (y < rect.height / 2 ? "before" : "after"), tabId: tab.id, groupId: tab.groupId, element: row } : null);
         }

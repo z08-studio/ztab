@@ -35,10 +35,14 @@ If Chrome returns display numbers without names, open **Settings → Display nam
 
 ## Inline groups for related open tabs
 
+Use the sort button beside **Select** to choose **Recently used** (the default) or **Manual order**. Recent mode puts the most recently used group or window section first and sorts its tabs by recent use. Pinned tabs keep their existing positions. Switching back to Manual restores your arranged order without moving real Chrome tabs.
+
+The list holds its positions while you point at it, navigate with the keyboard, search, select tabs, drag, or use a menu/dialog. Recent activity is applied when you return or leave the list; **Refresh** also applies it explicitly. Sorting reads Chrome's existing [last-accessed timestamps](https://developer.chrome.com/docs/extensions/reference/api/tabs#property-Tab-lastAccessed) and records focused tab/window visits locally. It does not predict behavior or read browsing history.
+
 Groups live directly in **Tabs**. Each group appears once, even when its members come from different windows; each member shows its source window. Regular tabs can belong to one group at a time. Pinned tabs remain separate and cannot be dragged into groups.
 
 - **Create or join a group:** drag a tab onto the center of another tab, hold for 450 ms until the grouping hint appears, and release. A new group starts with an inline name field. Dropping on an existing group's header joins it, including when the group is collapsed.
-- **Arrange tabs:** drag to a row's top or bottom edge to place the tab before or after it. Ungrouped tabs can be reordered within their original window; dropping beside a grouped tab joins and orders it within that group.
+- **Arrange tabs:** choose **Manual order**, then drag to a row's top or bottom edge to place the tab before or after it. Ungrouped tabs can be reordered within their original window; dropping beside a grouped tab joins and orders it within that group. Center/header drops can create or join groups in either sort mode.
 - **Remove a member:** drag it onto **Remove from group**, which appears during the drag, or use its `···` menu. It returns to its original window section.
 - **Manage a group:** click its name or chevron to collapse or expand it. Use its `···` menu to rename inline, edit its name/color/members, switch to its last active tab, or ungroup its tabs.
 

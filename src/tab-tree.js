@@ -1,45 +1,44 @@
-import { buildTabTreeModel, flattenTabTreeTabs, formatShortcut, getMoveTargets, getPinnedTabs, getUnpinnedTabTree } from "./shared/tab-tree.js";
-import { getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, updateTab, updateWindow } from "./background/chrome-api.js";
+import { buildTabTreeModel, flattenTabTreeTabs, formatShortcut, getMoveTargets, getPinnedTabs } from "./shared/tab-tree.js";
+import { getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, storageSet, updateTab, updateWindow } from "./background/chrome-api.js";
 import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_SHOW_PINNED_TABS_KEY, STORAGE_WORKSPACE_KEY } from "./background/constants.js";
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
-import { emptyWorkspace, GROUP_COLORS, orderedWorkspaceTabs, savedUrl } from "./shared/workspace.js";
+import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
 import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
 import { createDisplayReader } from "./display-info.js";
 import { createTabDragController } from "./tab-drag.js";
 import { createTabSelection } from "./tab-selection.js";
 import { selectableTabs } from "./shared/tab-selection.js";
+import { buildTabPresentation, resolveTabSort, TAB_SORT_STORAGE_KEY } from "./shared/tab-sorting.js";
 
 const state = {
     tree: [], currentWindowId: null, activeTabId: null, focusedTabId: null, incognito: false,
     workspace: emptyWorkspace(""), view: "tabs", query: { tabs: "", saved: "" },
     scroll: { tabs: 0, saved: 0 }, collection: "all", pinnedExpanded: true,
     collapsedGroups: new Set(), selectedId: null, showPinnedTabs: true,
-    movingTabId: null, mergingWindowId: null, busy: false, shortcut: "", renamingGroup: null
+    movingTabId: null, mergingWindowId: null, busy: false, shortcut: "", renamingGroup: null,
+    sortMode: "recent", sortNow: false, pointerInside: false, presentation: { sections: [], tabs: [], snapshot: null }
 };
 const elements = Object.fromEntries([
     "summary", "refresh", "keyboard-help", "mode-bar", "status", "tab-list", "search",
-    "saved-tools", "save-current", "collection", "new-collection", "workspace-panel", "ungroup-drop", "drag-announcement"
+    "saved-tools", "save-current", "collection", "new-collection", "workspace-panel", "ungroup-drop", "drag-announcement", "sort-tabs"
 ].map((id) => [id, document.getElementById(id)]));
 let refreshTimer = null;
 let refreshGeneration = 0;
 let noticeVersion = 0;
 let dragController = null;
+let interactionVersion = 0;
 const displayReader = createDisplayReader({ onChange: scheduleRefresh });
 const allTabs = () => flattenTabTreeTabs(state.tree);
 const tabById = (id) => allTabs().find((tab) => tab.id === id);
 const groupById = (id) => state.workspace.groups.find((group) => group.id === id);
-const membersOf = (id) => orderedWorkspaceTabs(state.workspace, allTabs()).filter((tab) => !tab.pinned && state.workspace.memberships[tab.id] === id);
+const membersOf = (id) => state.presentation.sections.find((section) => section.kind === "group" && section.group.id === id)?.tabs || [];
 const isBusy = () => state.busy || state.mergingWindowId !== null;
 const counted = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 const selection = createTabSelection({
-    getTabs: () => {
-        const ordered = orderedWorkspaceTabs(state.workspace, allTabs());
-        // Match the visual order: groups first, then each window's loose tabs.
-        return [...state.workspace.groups.flatMap((group) => ordered.filter((tab) => state.workspace.memberships[tab.id] === group.id)),
-            ...state.tree.flatMap((win) => ordered.filter((tab) => tab.windowId === win.id && !state.workspace.memberships[tab.id]))];
-    },
+    getTabs: () => state.presentation.tabs,
     getMatchingTabs: () => selectableTabs(allTabs(), state.workspace.groups, state.workspace.memberships, state.query.tabs),
-    getGroups: () => state.workspace.groups, getMemberships: () => state.workspace.memberships, getWindows: () => state.tree,
+    getGroups: () => state.presentation.sections.filter((section) => section.kind === "group").map((section) => section.group),
+    getMemberships: () => state.workspace.memberships, getWindows: () => state.tree,
     isAvailable: () => state.view === "tabs" && state.movingTabId === null,
     isBusy, render, workspaceAction, refreshTree, setStatus, onError: showActionError,
     onGroupAssigned: (id) => state.collapsedGroups.delete(id),
@@ -266,11 +265,15 @@ function renderTabs() {
             pinned.forEach((tab) => fragment.append(renderTabRow(tab)));
         matches += pinned.length;
     }
-    const grouped = renderGroups(query);
-    fragment.append(grouped.fragment);
-    matches += grouped.matches;
-    for (const win of getUnpinnedTabTree(state.tree)) {
-        const tabs = orderedWorkspaceTabs(state.workspace, win.tabs).filter((tab) => !state.workspace.memberships[tab.id] && matchesTab(tab, query));
+    for (const section of state.presentation.sections) {
+        if (section.kind === "group") {
+            const grouped = renderGroups(query, [section.group]);
+            fragment.append(grouped.fragment);
+            matches += grouped.matches;
+            continue;
+        }
+        const win = section.win;
+        const tabs = section.tabs.filter((tab) => matchesTab(tab, query));
         if (query && !tabs.length)
             continue;
         // A window with all tabs grouped or hidden still needs its merge action.
@@ -287,10 +290,10 @@ function renderTabs() {
     return fragment;
 }
 
-function renderGroups(query) {
+function renderGroups(query, groups) {
     const fragment = document.createDocumentFragment();
     let count = 0;
-    for (const group of state.workspace.groups) {
+    for (const group of groups) {
         const members = membersOf(group.id);
         const nameMatches = group.name.toLowerCase().includes(query);
         const matches = nameMatches ? members : members.filter((tab) => matchesTab(tab, query));
@@ -458,6 +461,18 @@ function render() {
     const focusKey = list.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
     const scrollTop = list.scrollTop;
     const workspace = state.workspace;
+    const interacting = selection.active() || isBusy() || dragController?.active() ||
+        state.renamingGroup || state.movingTabId !== null || document.querySelector("dialog[open], .menu:popover-open");
+    const inspecting = Boolean(state.query.tabs.trim()) || state.pointerInside || (document.hasFocus() && Boolean(focusKey));
+    const holdOrder = interacting || (state.sortMode === "recent" && inspecting && !state.sortNow);
+    state.presentation = buildTabPresentation(state.tree, workspace, state.sortMode, holdOrder ? state.presentation.snapshot : null);
+    selection.prune();
+    if (!holdOrder) state.sortNow = false;
+    const sortLabel = state.sortMode === "recent" ? "Recently used" : "Manual order";
+    elements["sort-tabs"].hidden = state.view !== "tabs" || state.movingTabId !== null;
+    elements["sort-tabs"].disabled = isBusy() || selection.active();
+    elements["sort-tabs"].setAttribute("aria-label", `Sort tabs: ${sortLabel}`);
+    elements["sort-tabs"].title = `Sort tabs: ${sortLabel}${state.sortMode === "recent" ? ". Choose Manual order to drag tabs into position." : ""}`;
     document.getElementById("tabs-count").textContent = String(allTabs().length);
     document.getElementById("saved-count").textContent = String(workspace.saved.length);
     document.getElementById("private-label").hidden = !state.incognito;
@@ -510,7 +525,7 @@ function switchView(view) {
     elements["tab-list"].scrollTop = state.scroll[view];
 }
 
-async function refreshTree({ preferActive = false } = {}) {
+async function refreshTree({ preferActive = false, sortNow = false, returnVersion = null } = {}) {
     const generation = ++refreshGeneration;
     const [windows, host, displayInfo] = await Promise.all([getAllNormalWindowsWithTabs(), getPanelWindow(), displayReader.read()]);
     if (!host)
@@ -524,13 +539,13 @@ async function refreshTree({ preferActive = false } = {}) {
     state.incognito = host.incognito === true;
     state.tree = buildTabTreeModel(scoped, host.id, displayInfo.displays);
     state.workspace = response.workspace;
+    state.sortNow ||= sortNow || (returnVersion !== null && returnVersion === interactionVersion && !state.query.tabs.trim());
     state.activeTabId = allTabs().find((tab) => tab.windowId === host.id && tab.active)?.id ?? null;
     state.focusedTabId = (scoped.find((win) => win.focused) || scoped.find((win) => win.id === host.id))?.tabs?.find((tab) => tab.active)?.id ?? null;
     if (preferActive)
         state.selectedId = `tab-${state.activeTabId}`;
     if (state.movingTabId !== null && !tabById(state.movingTabId))
         state.movingTabId = null;
-    selection.prune();
     render();
 }
 
@@ -789,10 +804,25 @@ function handleListKeys(event) {
     }
 }
 
+function sortMenu() {
+    if (isBusy() || selection.active()) return;
+    openMenu(elements["sort-tabs"], [["recent", "Recently used"], ["manual", "Manual order"]].map(([mode, label]) => ({
+        label: `${label}${mode === state.sortMode ? " ✓" : ""}`,
+        disabled: mode === state.sortMode,
+        run: async () => {
+            await storageSet({ [TAB_SORT_STORAGE_KEY]: mode });
+            state.sortMode = mode;
+            state.sortNow = true;
+            render();
+        }
+    })), showActionError);
+}
+
 async function init() {
     dragController = createTabDragController({
         root: elements["workspace-panel"], list: elements["tab-list"], ungroupZone: elements["ungroup-drop"],
         canDrag: () => state.view === "tabs" && !selection.active() && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),
+        canReorder: () => state.sortMode === "manual",
         describeTab: (id) => {
             const tab = tabById(id);
             return tab && !tab.pinned ? { id, windowId: tab.windowId, groupId: state.workspace.memberships[id] || null } : null;
@@ -801,8 +831,10 @@ async function init() {
         onDrop: dropTab, onEnd: scheduleRefresh, onError: showActionError
     });
     document.getElementById("search-icon").append(icon("search"));
-    for (const [id, name] of [["refresh", "refresh"], ["keyboard-help", "keyboard"], ["new-collection", "plus"]])
+    for (const [id, name] of [["refresh", "refresh"], ["keyboard-help", "keyboard"], ["new-collection", "plus"], ["sort-tabs", "sort"]])
         elements[id].append(icon(name));
+    elements["sort-tabs"].dataset.focusKey = "sort-tabs";
+    elements["sort-tabs"].addEventListener("click", sortMenu);
     elements["save-current"].prepend(icon("saved"));
     const views = [...document.querySelectorAll("[data-view]")];
     views.forEach((control, index) => {
@@ -819,7 +851,7 @@ async function init() {
     });
     elements.search.addEventListener("input", () => { state.query[state.view] = elements.search.value; render(); });
     elements.collection.addEventListener("change", () => { state.collection = elements.collection.value; render(); });
-    elements.refresh.addEventListener("click", () => refreshTree().catch(showActionError));
+    elements.refresh.addEventListener("click", () => refreshTree({ sortNow: true }).catch(showActionError));
     elements["new-collection"].addEventListener("click", collectionDialog);
     elements["keyboard-help"].addEventListener("click", keyboardHelp);
     elements["save-current"].addEventListener("click", () => saveTab(state.activeTabId).catch(showActionError));
@@ -835,8 +867,19 @@ async function init() {
             render();
         }
     });
-    const stored = await storageGet([STORAGE_SHOW_PINNED_TABS_KEY]);
+    // Apply new activity once the pointer or keyboard leaves the list. IDs and
+    // section positions remain steady throughout selection, search, and menus.
+    const app = document.querySelector(".app");
+    const noteInteraction = () => { interactionVersion += 1; };
+    for (const event of ["pointerdown", "pointermove", "keydown", "input"])
+        app.addEventListener(event, noteInteraction, { capture: true, passive: true });
+    app.addEventListener("pointerenter", () => { render(); state.pointerInside = true; });
+    app.addEventListener("pointerleave", () => { state.pointerInside = false; render(); });
+    window.addEventListener("blur", render);
+    window.addEventListener("focus", () => refreshTree({ returnVersion: interactionVersion }).catch(showActionError));
+    const stored = await storageGet([STORAGE_SHOW_PINNED_TABS_KEY, TAB_SORT_STORAGE_KEY]);
     state.showPinnedTabs = resolveShowPinnedTabs(stored[STORAGE_SHOW_PINNED_TABS_KEY]);
+    state.sortMode = resolveTabSort(stored[TAB_SORT_STORAGE_KEY]);
     for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onMoved, chrome.tabs.onAttached, chrome.tabs.onDetached, chrome.tabs.onActivated, chrome.tabs.onReplaced, chrome.windows.onCreated, chrome.windows.onRemoved, chrome.windows.onFocusChanged])
         event.addListener(scheduleRefresh);
     chrome.windows.onBoundsChanged?.addListener(scheduleRefresh);
@@ -846,6 +889,11 @@ async function init() {
             scheduleRefresh();
     });
     chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes[TAB_SORT_STORAGE_KEY]) {
+            state.sortMode = resolveTabSort(changes[TAB_SORT_STORAGE_KEY].newValue);
+            state.sortNow = true;
+            render();
+        }
         if (area === "local" && changes[STORAGE_SHOW_PINNED_TABS_KEY])
             state.showPinnedTabs = resolveShowPinnedTabs(changes[STORAGE_SHOW_PINNED_TABS_KEY].newValue);
         if ((area === "local" && (changes[STORAGE_SHOW_PINNED_TABS_KEY] || changes[STORAGE_WORKSPACE_KEY])) || (area === "session" && changes[STORAGE_PRIVATE_WORKSPACE_KEY]))

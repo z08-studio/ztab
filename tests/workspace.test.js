@@ -16,7 +16,7 @@ function harness() {
         { id: 3, type: "normal", incognito: true, tabs: [{ id: 31, windowId: 3, title: "Private", url: "https://private.example/", active: true }] }
     ];
     const effects = [];
-    const controls = { failWrite: false };
+    const controls = { failWrite: false, now: 1000 };
     const api = {
         storageGet: async (keys, area = "local") => Object.fromEntries(keys.map((key) => [key, structuredClone(storage[area][key])])),
         storageSet: async (values, area = "local") => {
@@ -38,7 +38,7 @@ function harness() {
             return tab;
         }
     };
-    const controller = () => createWorkspaceController({ api, chrome: {}, createId: () => `id-${++sequence}`, now: () => 1000 });
+    const controller = () => createWorkspaceController({ api, chrome: {}, createId: () => `id-${++sequence}`, now: () => controls.now });
     return { storage, windows, effects, controls, controller: controller(), restart: controller };
 }
 
@@ -326,6 +326,101 @@ test("local ordering survives worker restarts and tab replacement, prunes closed
     assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.tabOrder, [99]);
     delete h.storage.session[STORAGE_BROWSER_SESSION_KEY];
     assert.deepEqual((await h.restart().request(1, { action: "read" })).workspace.tabOrder, []);
+});
+
+test("recent activity is backward compatible and discards malformed tab IDs or timestamps", () => {
+    const previous = emptyWorkspace("session");
+    delete previous.recentActivity;
+    assert.deepEqual(readWorkspace(previous, "session").recentActivity, {});
+    previous.recentActivity = { 0: 0, 11: 1250.5, 12: -1, 13: NaN, 14: Infinity, 15: "1500", "16.5": 1000, "017": 1000, bad: 1000 };
+    assert.deepEqual(readWorkspace(previous, "session").recentActivity, { 0: 0, 11: 1250.5 });
+    assert.equal(previous.recentActivity[15], "1500");
+    for (const invalid of [null, [], "1000", 1000]) {
+        previous.recentActivity = invalid;
+        assert.deepEqual(readWorkspace(previous, "session").recentActivity, {});
+    }
+});
+
+test("recent activity records focused active tabs and ignores background, inactive, and missing-window events", async () => {
+    const h = harness();
+    h.windows[0].focused = true;
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Visits", color: "blue", tabIds: [11, 21] });
+    h.controls.now = 1100;
+    await h.controller.maintain({ tabId: 11, windowId: 1 });
+    h.controls.now = 1200;
+    for (const change of [{ tabId: 21, windowId: 2 }, { windowId: 2 }, { tabId: 12, windowId: 1 },
+        { tabId: 11, windowId: 2 }, { windowId: -1 }, { tabId: 999 }, {}])
+        await h.controller.maintain(change);
+    const { workspace } = await h.controller.request(1, { action: "read" });
+    assert.deepEqual(workspace.recentActivity, { 11: 1100 });
+    // Group switching retains its existing independent last-active behavior.
+    assert.equal(workspace.lastActive[group.id], 11);
+    h.windows[0].focused = false;
+    h.windows[1].focused = true;
+    h.controls.now = 1300;
+    await h.controller.maintain({ windowId: 2 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, { 11: 1100, 21: 1300 });
+});
+
+test("recent activity uses event time and never replaces a newer visit with a stale timestamp", async () => {
+    const h = harness();
+    h.windows[0].focused = true;
+    await h.controller.request(1, { action: "read" });
+    h.controls.now = 1500;
+    const visit = h.controller.maintain({ tabId: 11, windowId: 1 });
+    h.controls.now = 9000;
+    await visit;
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, { 11: 1500 });
+    h.controls.now = 1500;
+    await h.controller.maintain({ windowId: 1 });
+    h.controls.now = 1400;
+    await h.controller.maintain({ tabId: 11, windowId: 1 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, { 11: 1500 });
+});
+
+test("recent activity survives worker restarts, follows replacements, prunes tabs, and resets between browser sessions", async () => {
+    const h = harness();
+    h.windows[0].focused = true;
+    await h.controller.request(1, { action: "read" });
+    await h.controller.maintain({ windowId: 1 });
+    assert.deepEqual((await h.restart().request(1, { action: "read" })).workspace.recentActivity, { 11: 1000 });
+    h.windows[0].tabs[0].id = 99;
+    await h.controller.maintain({ removedId: 11, addedId: 99 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, { 99: 1000 });
+    h.windows[0].tabs[0].pinned = true;
+    h.controls.now = 2000;
+    await h.controller.maintain({ tabId: 99, windowId: 1 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, {});
+    h.windows[0].tabs[0].pinned = false;
+    await h.controller.maintain({ windowId: 1 });
+    h.windows[0].tabs.shift();
+    await h.controller.maintain();
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, {});
+    h.windows[0].tabs[0].active = true;
+    await h.controller.maintain({ tabId: 12, windowId: 1 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.recentActivity, { 12: 2000 });
+    delete h.storage.session[STORAGE_BROWSER_SESSION_KEY];
+    assert.deepEqual((await h.restart().request(1, { action: "read" })).workspace.recentActivity, {});
+});
+
+test("recent activity remains separate for private windows and excludes floating or popup windows", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "read" });
+    await h.controller.request(3, { action: "read" });
+    h.windows[2].focused = true;
+    await h.controller.maintain({ tabId: 31, windowId: 3 });
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].recentActivity, {});
+    assert.deepEqual(h.storage.session[STORAGE_PRIVATE_WORKSPACE_KEY].recentActivity, { 31: 1000 });
+    h.windows[2].focused = false;
+    h.windows.push({ id: 4, type: "normal", focused: true, alwaysOnTop: true, tabs: [{ id: 41, active: true }] });
+    await h.controller.maintain({ tabId: 41, windowId: 4 });
+    h.windows[3].focused = false;
+    h.windows.push({ id: 5, type: "popup", focused: true, tabs: [{ id: 51, active: true }] });
+    await h.controller.maintain({ tabId: 51, windowId: 5 });
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].recentActivity, {});
+    h.windows.splice(2, 1);
+    await h.controller.maintain();
+    assert.equal(h.storage.session[STORAGE_PRIVATE_WORKSPACE_KEY], undefined);
 });
 
 test("assigning appends to the group order and rename changes only the name with revision protection", async () => {

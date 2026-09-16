@@ -1,7 +1,7 @@
 export const GROUP_COLORS = ["green", "blue", "purple", "amber", "rose", "gray"];
 
 export function emptyWorkspace(sessionId) {
-    return { version: 1, sessionId, groups: [], collections: [], saved: [], memberships: {}, lastActive: {}, tabOrder: [] };
+    return { version: 1, sessionId, groups: [], collections: [], saved: [], memberships: {}, lastActive: {}, tabOrder: [], recentActivity: {} };
 }
 
 export function readWorkspace(stored, sessionId) {
@@ -17,15 +17,24 @@ export function readWorkspace(stored, sessionId) {
         workspace.memberships = {};
         workspace.lastActive = {};
         workspace.tabOrder = [];
+        workspace.recentActivity = {};
     }
     workspace.memberships ||= {};
     workspace.lastActive ||= {};
     workspace.tabOrder = normalizedTabOrder(workspace.tabOrder);
+    workspace.recentActivity = normalizedRecentActivity(workspace.recentActivity);
     return workspace;
 }
 
 function normalizedTabOrder(order) {
     return [...new Set((Array.isArray(order) ? order : []).filter((id) => Number.isInteger(id) && id >= 0))];
+}
+
+function normalizedRecentActivity(activity) {
+    if (!activity || typeof activity !== "object" || Array.isArray(activity))
+        return {};
+    return Object.fromEntries(Object.entries(activity).filter(([id, time]) =>
+        Number.isInteger(Number(id)) && Number(id) >= 0 && String(Number(id)) === id && Number.isFinite(time) && time >= 0));
 }
 
 // This order belongs to Ztab only. Unknown tabs retain their browser order and
@@ -165,6 +174,8 @@ export function pruneMemberships(workspace, tabs) {
             delete workspace.lastActive[groupId];
     }
     workspace.tabOrder = normalizedTabOrder(workspace.tabOrder).filter((id) => liveIds.has(id));
+    workspace.recentActivity = Object.fromEntries(Object.entries(normalizedRecentActivity(workspace.recentActivity))
+        .filter(([id]) => liveIds.has(Number(id))));
 }
 
 export function rememberActiveTab(workspace, tabId) {
@@ -175,6 +186,11 @@ export function rememberActiveTab(workspace, tabId) {
 
 export function replaceMemberTab(workspace, removedId, addedId) {
     workspace.tabOrder = normalizedTabOrder((workspace.tabOrder || []).map((id) => id === removedId ? addedId : id));
+    workspace.recentActivity = normalizedRecentActivity(workspace.recentActivity);
+    if (Object.hasOwn(workspace.recentActivity, removedId)) {
+        workspace.recentActivity[addedId] = Math.max(workspace.recentActivity[addedId] ?? 0, workspace.recentActivity[removedId]);
+        delete workspace.recentActivity[removedId];
+    }
     const groupId = workspace.memberships[removedId];
     if (!groupId)
         return;

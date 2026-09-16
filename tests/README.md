@@ -53,6 +53,14 @@ This smoke check does not verify store-delivered upgrades, Windows/Linux binding
 
 ## Inline groups and Saved checks in Chrome
 
+### Recent sorting verification
+
+Verified on 2026-09-16 in isolated Chrome for Testing 153.0.8010.12 on macOS: Recently used is the default; a focused tab visit updates its section and row priority after Refresh. A background-window activation did not create a focused-visit record; focusing that window did, with Playwright focus emulation disabled. Pinned positions, native tab indices, window IDs, and Chrome group IDs stayed unchanged.
+
+Multi-selection held its row order after another tab activated, including an explicit refresh; Shift-click still selected the original visible range. Search and open menus also retained their order. Manual drag ordering survived switching to Recent and back exactly, and the preference survived panel reload. Recent mode blocked edge reordering with a Manual-order hint while held-center cross-window grouping and inline naming still worked.
+
+Reviewed the sorting control/menu at 320px in light and dark styles with no horizontal overflow. The 139-test suite covers timestamp normalization, section/member ranking, stable ties, manual restoration, frozen snapshots, session reset, replacement, pruning, and private-mode boundaries. A full browser restart and native Windows/Linux behavior were not manually retested. UI references: [sorting menu](../docs/screenshots/recent-sorting.png) and [dark recent sorting](../docs/screenshots/recent-sorting-dark.png).
+
 ### Batch-selection verification
 
 Verified on 2026-09-16 in an isolated Chrome for Testing 153.0.8010.12 profile using the actual extension pages and local sample tabs. Cmd-click and Ctrl-click enter selection, Shift-click follows visible rows and recovers after its anchor is collapsed, scope checkboxes include collapsed members, and Cmd+A works from a focused checkbox. Pinned tabs have no selection controls. Switching to Saved clears selection; external closure or pinning prunes selected IDs.
@@ -61,7 +69,7 @@ Batch create/join/ungroup preserved native tab IDs, indices, window IDs, and Chr
 
 Search retained hidden selections and showed their count. Closing hidden selections required the count confirmation; ordinary batch closure was immediate and silent, with no Undo. Closing a disposable panel's last tab still completed closure of another selected tab in another window. Escape dismissed a menu/dialog without exiting selection. Light/dark layouts were reviewed, and the 320×480 panel had no horizontal overflow; the list ended exactly at the fixed toolbar.
 
-The current suite passes 124 Node tests. Partial API/storage failures, stale membership, browsing-mode boundaries, and mid-operation changes have automated coverage. Windows/Linux shortcuts and a full browser restart were not manually retested in this pass. No new permission is required for batch actions. UI references: [batch selection](../docs/screenshots/bulk-selection.png) and [dark batch selection](../docs/screenshots/bulk-selection-dark.png).
+The batch-selection milestone passed 124 Node tests. Partial API/storage failures, stale membership, browsing-mode boundaries, and mid-operation changes have automated coverage. Windows/Linux shortcuts and a full browser restart were not manually retested in this pass. No new permission is required for batch actions. UI references: [batch selection](../docs/screenshots/bulk-selection.png) and [dark batch selection](../docs/screenshots/bulk-selection-dark.png).
 
 ### Inline-group verification
 

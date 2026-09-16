@@ -44,6 +44,7 @@ export function buildTabTreeModel(windows, currentWindowId, displayInfo = []) {
                 audible: tab.audible === true,
                 muted: tab.mutedInfo?.muted === true,
                 index: tab.index || 0,
+                lastAccessed: Number.isFinite(tab.lastAccessed) && tab.lastAccessed > 0 ? tab.lastAccessed : 0,
                 isCurrentWindow
             }));
 
