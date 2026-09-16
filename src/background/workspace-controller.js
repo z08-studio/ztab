@@ -1,7 +1,7 @@
 import { AsyncTaskQueue } from "./async-task-queue.js";
 import * as chromeApi from "./chrome-api.js";
 import { MESSAGE_WORKSPACE, STORAGE_BROWSER_SESSION_KEY, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "./constants.js";
-import { applyWorkspaceOperation, pruneMemberships, readWorkspace, rememberActiveTab, replaceMemberTab, savedUrl } from "../shared/workspace.js";
+import { applyWorkspaceOperation, orderedWorkspaceTabs, pruneMemberships, readWorkspace, rememberActiveTab, replaceMemberTab, savedUrl } from "../shared/workspace.js";
 import { isSyncWindow } from "../shared/tab-utils.js";
 
 export function createWorkspaceController(dependencies = {}) {
@@ -54,7 +54,7 @@ export function createWorkspaceController(dependencies = {}) {
         if (operation.action === "activate-group") {
             if (!workspace.groups.some((group) => group.id === operation.id))
                 throw new Error("Group no longer exists.");
-            const members = tabs.filter((tab) => workspace.memberships[tab.id] === operation.id);
+            const members = orderedWorkspaceTabs(workspace, tabs.filter((tab) => workspace.memberships[tab.id] === operation.id));
             const tab = members.find((item) => item.id === workspace.lastActive[operation.id]) || members[0];
             if (!tab)
                 throw new Error("This group is empty. Use Edit group to add open tabs.");
@@ -120,6 +120,10 @@ export function createWorkspaceController(dependencies = {}) {
         });
         const update = (change) => { maintain(change).catch(() => {}); };
         events.tabs.onRemoved.addListener(() => update());
+        events.tabs.onUpdated.addListener((_tabId, change) => {
+            if (change.pinned !== undefined)
+                update();
+        });
         events.tabs.onActivated.addListener(({ tabId }) => update({ tabId }));
         events.tabs.onReplaced.addListener((addedId, removedId) => update({ addedId, removedId }));
         events.windows.onRemoved.addListener(() => update());

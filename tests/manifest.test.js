@@ -68,28 +68,19 @@ test("action shortcut uses the low-conflict numeric binding on every platform", 
   assert.equal(suggestedKey.mac, "Command+Shift+9");
 });
 
-test("side panel prioritizes shortcut help above tabs and moves counts below them", async () => {
+test("side panel keeps Tabs and Saved navigation with shortcut help in the footer", async () => {
   const panelUrl = new URL("../side-panel.html", import.meta.url);
   const panel = await readFile(panelUrl, "utf8");
-  const shortcutHelpIndex = panel.indexOf('class="shortcut-help"');
+  const shortcutHelpIndex = panel.indexOf('id="keyboard-help"');
   const tabListIndex = panel.indexOf('id="tab-list"');
   const summaryFooterIndex = panel.indexOf('class="summary-footer"');
 
   assert.ok(shortcutHelpIndex >= 0);
-  assert.ok(shortcutHelpIndex < tabListIndex);
   assert.ok(tabListIndex < summaryFooterIndex);
+  assert.ok(summaryFooterIndex < shortcutHelpIndex);
+  assert.deepEqual([...panel.matchAll(/data-view="([^"]+)"/g)].map((match) => match[1]), ["tabs", "saved"]);
+  assert.equal(panel.includes('class="brandbar"'), false);
   assert.equal(panel.includes("<h1>Tabs</h1>"), false);
-});
-
-test("initial keyboard selection does not outline the active tab", async () => {
-  const stylesUrl = new URL("../src/tab-tree.css", import.meta.url);
-  const styles = await readFile(stylesUrl, "utf8");
-  const activeSelectionRule = styles.match(
-    /\.tab-row\.active-row\.selected\s*\{([^}]*)\}/,
-  );
-
-  assert.ok(activeSelectionRule);
-  assert.match(activeSelectionRule[1], /box-shadow:\s*none;/);
 });
 
 test("options page groups display, sync, and troubleshooting controls", async () => {

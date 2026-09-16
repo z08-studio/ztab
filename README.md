@@ -14,7 +14,7 @@ Ztab was previously named TabSpan. The capital Z follows the Z-series naming con
 
 ## Every window in one side panel
 
-Click the Ztab toolbar icon to open **Tabs**, **Groups**, and **Saved**. Tabs shows a live tree from normal Chrome windows in the same browsing mode.
+Click the Ztab toolbar icon to open **Tabs** or **Saved**. Tabs shows pinned tabs, inline groups, and the remaining tabs by window, using normal Chrome windows in the same browsing mode. Thin dividers separate rows, and close buttons remain visible beside regular tabs.
 
 From the side panel, you can:
 
@@ -25,25 +25,32 @@ From the side panel, you can:
 - Close regular tabs without switching windows first.
 - Hide the pinned-tabs section when you want a more compact view.
 - See updates automatically as tabs and windows change.
-- Search open tabs, create groups across windows, and keep an independent library of saved pages.
+- Search open tabs, arrange related tabs into inline groups across windows, and keep an independent library of saved pages.
 
-With multiple displays connected, each window heading also shows its display name. The name updates when you move the window to another screen; windows spanning screens use the display containing the largest part of the window. Window numbers remain so you can distinguish multiple windows on the same display. Matching display names receive a number, and missing names fall back to **Display 1**, **Display 2**, and so on.
+With multiple displays connected, each window heading shows its window and display names on one line. Long display names truncate to leave room for window actions. The name updates when you move the window to another screen; windows spanning screens use the display containing the largest part of the window. Window numbers remain so you can distinguish multiple windows on the same display. Matching display names receive a number, and missing names fall back to **Display 1**, **Display 2**, and so on.
 
 The `system.display` permission reads display names and positions locally for these labels. Ztab does not change display settings. With one display, or when display information is unavailable, headings keep their usual window labels.
 
-If Chrome returns display numbers without names, select **Show display names** in Tabs and allow Chrome's **Manage windows on all your displays** request. This optional browser permission supplies system display names, including on macOS. Ztab only requests it after you select that action; declining keeps numbered labels available.
+If Chrome returns display numbers without names, open **Settings → Display names**, select **Show display names**, and allow Chrome's **Manage windows on all your displays** request. This optional browser permission supplies system display names, including on macOS. Ztab only requests it after you select that action; declining keeps numbered labels available.
 
-## Groups for related open tabs
+## Inline groups for related open tabs
 
-Create a group in **Groups**, choose its name and color, and select tabs from any window. Each open tab belongs to at most one Ztab group. These groups do not move tabs, reorder them, or change Chrome's native tab groups.
+Groups live directly in **Tabs**. Each group appears once, even when its members come from different windows; each member shows its source window. Regular tabs can belong to one group at a time. Pinned tabs remain separate and cannot be dragged into groups.
 
-Click a group name to jump to its last active tab and focus that window. Use the chevron to expand its members. The `···` menu on a tab lets you add it to a group, move it to another group, or remove it. **Ungroup** removes the group while keeping its tabs open; the notice offers **Undo**.
+- **Create or join a group:** drag a tab onto the center of another tab, hold for 450 ms until the grouping hint appears, and release. A new group starts with an inline name field. Dropping on an existing group's header joins it, including when the group is collapsed.
+- **Arrange tabs:** drag to a row's top or bottom edge to place the tab before or after it. Ungrouped tabs can be reordered within their original window; dropping beside a grouped tab joins and orders it within that group.
+- **Remove a member:** drag it onto **Remove from group**, which appears during the drag, or use its `···` menu. It returns to its original window section.
+- **Manage a group:** click its name or chevron to collapse or expand it. Use its `···` menu to rename inline, edit its name/color/members, switch to its last active tab, or ungroup its tabs.
 
-Closing a tab removes its membership. Group names remain when empty. Members are tied to the current browser session and are cleared after a browser restart, extension reload, or update; groups are not saved sessions.
+Clear search before dragging. Releasing over a tab center before the hold completes does nothing; **Escape** cancels a drag. The tab's `···` menu provides **Add to group…**, **Move to group…**, and removal actions without dragging.
+
+Grouping and arranging tabs change only Ztab's list. They never move real tabs between windows, change their Chrome tab-strip order, or alter Chrome's native groups. Use **Move to window…** or **Merge here** when you want to move actual browser tabs.
+
+Closing a tab removes its membership without a notice or undo action. Empty group names remain. **Ungroup tabs** removes a group while keeping its tabs open; that action offers **Undo**. Membership and local ordering survive panel reloads and service-worker suspension, but are cleared after a browser restart, extension reload, or update. Group definitions remain; groups are not saved sessions.
 
 ## Saved pages, kept locally
 
-Choose **Save to Saved** from a tab's `···` menu, or **Save current tab** in Saved. HTTP(S) pages are stored in Ztab's own library, independently of Chrome bookmarks. A page is saved to **Unsorted** with its full URL, title, and save date. Saving the same full URL again opens its existing editor.
+Choose **Save page** from a tab's `···` menu, or **Save current tab** in Saved. HTTP(S) pages are stored in Ztab's own library, independently of Chrome bookmarks. A page is saved to **Unsorted** with its full URL, title, and save date. Saving the same full URL again opens its existing editor.
 
 Use collections and search to organize Saved. Edit a page to change its title, URL, or collection. Opening a saved page reuses an exact matching tab in the same browsing mode, or opens a new tab in the panel's window. The page remains in Saved. Removing a saved page offers **Undo**.
 
@@ -143,7 +150,7 @@ Only regular `http://` and `https://` pages are synchronized. Chrome internal pa
 Ztab requires no account and uses no external server.
 
 - Your pinned-site list, synchronization metadata, and panel preference are stored in Chrome's local extension storage.
-- Saved titles, full URLs, dates, collections, and group definitions are stored locally. Group membership is valid only for the current browser session.
+- Saved titles, full URLs, dates, collections, and group definitions are stored locally. Group membership and local tab ordering are valid only for the current browser session.
 - Your tab titles and full browsing URLs are not uploaded.
 - Your browsing data is not sold or used for advertising.
 

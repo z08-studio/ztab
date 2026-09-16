@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyWorkspaceOperation, emptyWorkspace, savedUrl } from "../src/shared/workspace.js";
+import { applyWorkspaceOperation, emptyWorkspace, orderedWorkspaceTabs, readWorkspace, savedUrl } from "../src/shared/workspace.js";
 import { createWorkspaceController } from "../src/background/workspace-controller.js";
 import { STORAGE_BROWSER_SESSION_KEY, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "../src/background/constants.js";
 
@@ -199,5 +199,158 @@ test("workspace actions exclude floating and popup windows just like the panel",
     for (const tabId of [41, 51])
         await assert.rejects(h.controller.request(1, { action: "save-tab", tabId }), /Tab no longer exists/);
     await assert.rejects(h.controller.request(4, { action: "read" }), /regular window/);
+    assert.deepEqual(h.effects, []);
+});
+
+test("local tab ordering is backward compatible, stable for new tabs, and does not mutate its inputs", () => {
+    const previous = emptyWorkspace("session");
+    delete previous.tabOrder;
+    const workspace = readWorkspace(previous, "session");
+    assert.deepEqual(workspace.tabOrder, []);
+    const tabs = [{ id: 11 }, { id: 12 }, { id: 21 }, { id: 22 }];
+    workspace.tabOrder = [21, 21, "12", -1, 11];
+    assert.deepEqual(orderedWorkspaceTabs(workspace, tabs).map((tab) => tab.id), [21, 11, 12, 22]);
+    assert.deepEqual(tabs.map((tab) => tab.id), [11, 12, 21, 22]);
+    assert.deepEqual(readWorkspace(workspace, "session").tabOrder, [21, 11]);
+    assert.deepEqual(workspace.tabOrder, [21, 21, "12", -1, 11]);
+});
+
+test("dropping across windows creates one virtual group with a unique name and no Chrome mutations", async () => {
+    const h = harness();
+    const first = await h.controller.request(1, {
+        action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group",
+        expectedGroupId: null, expectedTargetGroupId: null
+    });
+    assert.equal(first.created, true);
+    assert.equal(first.group.name, "New group");
+    assert.equal(first.group.color, "purple");
+    assert.deepEqual(first.workspace.memberships, { 11: first.group.id, 21: first.group.id });
+    assert.deepEqual(orderedWorkspaceTabs(first.workspace, h.windows.flatMap((win) => win.tabs)).filter((tab) => first.workspace.memberships[tab.id]).map((tab) => tab.id), [21, 11]);
+    const second = await h.controller.request(1, {
+        action: "drop-tab", tabId: 11, targetTabId: 12, placement: "group", expectedGroupId: first.group.id, expectedTargetGroupId: null
+    });
+    assert.equal(second.group.name, "New group (2)");
+    assert.equal(second.workspace.memberships[21], first.group.id);
+    assert.equal(second.workspace.memberships[11], second.group.id);
+    assert.deepEqual(h.effects, []);
+    assert.deepEqual(h.windows[0].tabs.map((tab) => tab.id), [11, 12]);
+    assert.deepEqual(h.windows[1].tabs.map((tab) => tab.id), [21]);
+});
+
+test("before and after drops reorder locally and join an existing cross-window group", async () => {
+    const h = harness();
+    const first = await h.controller.request(1, { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "before" });
+    assert.deepEqual(orderedWorkspaceTabs(first.workspace, h.windows[0].tabs).map((tab) => tab.id), [12, 11]);
+    const grouped = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group" });
+    const joined = await h.controller.request(1, {
+        action: "drop-tab", tabId: 12, targetTabId: 21, placement: "before", expectedGroupId: null, expectedTargetGroupId: grouped.group.id
+    });
+    assert.equal(joined.workspace.memberships[12], grouped.group.id);
+    const tabs = h.windows.flatMap((win) => win.tabs);
+    assert.deepEqual(orderedWorkspaceTabs(joined.workspace, tabs).filter((tab) => joined.workspace.memberships[tab.id]).map((tab) => tab.id), [12, 21, 11]);
+    const reordered = await h.controller.request(2, {
+        action: "drop-tab", tabId: 12, targetTabId: 11, placement: "after", expectedGroupId: grouped.group.id, expectedTargetGroupId: grouped.group.id
+    });
+    assert.deepEqual(orderedWorkspaceTabs(reordered.workspace, tabs).filter((tab) => reordered.workspace.memberships[tab.id]).map((tab) => tab.id), [21, 11, 12]);
+    assert.deepEqual(h.effects, []);
+});
+
+test("dragging to ungrouped rows requires the original window and removes membership atomically", async () => {
+    const h = harness();
+    const grouped = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "group" });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    await assert.rejects(h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "before" }), /own window/);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    await h.controller.request(1, { action: "assign-tab", tabId: 12, groupId: null });
+    const dropped = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "after", expectedGroupId: grouped.group.id });
+    assert.deepEqual(dropped.workspace.memberships, {});
+    assert.equal(dropped.workspace.groups.length, 1);
+    assert.deepEqual(orderedWorkspaceTabs(dropped.workspace, h.windows[0].tabs).map((tab) => tab.id), [12, 11]);
+    assert.deepEqual(h.effects, []);
+});
+
+test("stale drag membership, missing tabs, invalid positions, and pinned tabs leave stored data intact", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group" });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    const staleSource = { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "group", expectedGroupId: null };
+    const staleTarget = { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "group", expectedTargetGroupId: null };
+    for (const operation of [staleSource, staleTarget,
+        { action: "assign-tab", tabId: 11, groupId: null, expectedGroupId: null },
+        { action: "drop-tab", tabId: 12, targetTabId: 999, placement: "group" },
+        { action: "drop-tab", tabId: 999, targetTabId: 12, placement: "group" },
+        { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "unknown" },
+        { action: "drop-tab", tabId: 12, targetTabId: 12, placement: "group" }
+    ]) {
+        await assert.rejects(h.controller.request(1, operation));
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    }
+    h.windows[0].tabs[1].pinned = true;
+    for (const operation of [
+        { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "before" },
+        { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "group" },
+        { action: "assign-tab", tabId: 12, groupId: group.id },
+        { action: "create-group", name: "Pinned", color: "purple", tabIds: [12] }
+    ]) {
+        await assert.rejects(h.controller.request(1, operation), /Unpin/);
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    }
+});
+
+test("concurrent drags cannot steal a tab after another window groups it", async () => {
+    const h = harness();
+    const operation = { action: "drop-tab", tabId: 12, placement: "group", expectedGroupId: null, expectedTargetGroupId: null };
+    const results = await Promise.allSettled([
+        h.controller.request(1, { ...operation, targetTabId: 11 }),
+        h.controller.request(2, { ...operation, targetTabId: 21 })
+    ]);
+    assert.equal(results[0].status, "fulfilled");
+    assert.equal(results[1].status, "rejected");
+    assert.match(results[1].reason.message, /group changed/);
+    const { workspace } = await h.controller.request(1, { action: "read" });
+    assert.deepEqual(workspace.memberships, { 11: results[0].value.group.id, 12: results[0].value.group.id });
+    assert.equal(workspace.groups.length, 1);
+    assert.deepEqual(h.effects, []);
+});
+
+test("local ordering survives worker restarts and tab replacement, prunes closed or pinned tabs, and resets on a new session", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "before" });
+    assert.deepEqual((await h.restart().request(1, { action: "read" })).workspace.tabOrder, [12, 11, 21]);
+    h.windows[0].tabs[1].id = 99;
+    await h.controller.maintain({ removedId: 12, addedId: 99 });
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.tabOrder, [99, 11, 21]);
+    h.windows[0].tabs[0].pinned = true;
+    h.windows[1].tabs = [];
+    await h.controller.maintain();
+    assert.deepEqual((await h.controller.request(1, { action: "read" })).workspace.tabOrder, [99]);
+    delete h.storage.session[STORAGE_BROWSER_SESSION_KEY];
+    assert.deepEqual((await h.restart().request(1, { action: "read" })).workspace.tabOrder, []);
+});
+
+test("assigning appends to the group order and rename changes only the name with revision protection", async () => {
+    const h = harness();
+    const initial = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group" });
+    const assigned = await h.controller.request(1, { action: "assign-tab", tabId: 12, groupId: initial.group.id, expectedGroupId: null });
+    const group = assigned.workspace.groups[0];
+    await assert.rejects(h.controller.request(1, { action: "rename-group", id: group.id, name: "Stale", expectedRevision: initial.group.revision }), /changed in another window/);
+    const renamed = await h.controller.request(1, { action: "rename-group", id: group.id, name: "Research", expectedRevision: group.revision });
+    assert.equal(renamed.group.name, "Research");
+    assert.deepEqual(renamed.workspace.memberships, assigned.workspace.memberships);
+    assert.deepEqual(renamed.workspace.lastActive, assigned.workspace.lastActive);
+    assert.deepEqual(renamed.workspace.tabOrder, [21, 11, 12]);
+    assert.deepEqual(h.effects, []);
+});
+
+test("failed drag writes are atomic and later queued operations recover", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "read" });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    h.controls.failWrite = true;
+    await assert.rejects(h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group" }), /quota/);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    h.controls.failWrite = false;
+    const success = await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group" });
+    assert.equal(success.workspace.groups.length, 1);
     assert.deepEqual(h.effects, []);
 });

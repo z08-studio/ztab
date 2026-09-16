@@ -1,7 +1,7 @@
 export const GROUP_COLORS = ["green", "blue", "purple", "amber", "rose", "gray"];
 
 export function emptyWorkspace(sessionId) {
-    return { version: 1, sessionId, groups: [], collections: [], saved: [], memberships: {}, lastActive: {} };
+    return { version: 1, sessionId, groups: [], collections: [], saved: [], memberships: {}, lastActive: {}, tabOrder: [] };
 }
 
 export function readWorkspace(stored, sessionId) {
@@ -16,10 +16,23 @@ export function readWorkspace(stored, sessionId) {
         workspace.sessionId = sessionId;
         workspace.memberships = {};
         workspace.lastActive = {};
+        workspace.tabOrder = [];
     }
     workspace.memberships ||= {};
     workspace.lastActive ||= {};
+    workspace.tabOrder = normalizedTabOrder(workspace.tabOrder);
     return workspace;
+}
+
+function normalizedTabOrder(order) {
+    return [...new Set((Array.isArray(order) ? order : []).filter((id) => Number.isInteger(id) && id >= 0))];
+}
+
+// This order belongs to Ztab only. Unknown tabs retain their browser order and
+// appear after the tabs that the user has already arranged.
+export function orderedWorkspaceTabs(workspace, tabs) {
+    const positions = new Map(normalizedTabOrder(workspace.tabOrder).map((id, index) => [id, index]));
+    return [...tabs].sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
 }
 
 export function savedUrl(value) {
@@ -91,8 +104,35 @@ function assignTab(workspace, tabId, groupId) {
     }
 }
 
+function checkMembership(workspace, tabId, operation, key) {
+    if (Object.hasOwn(operation, key) && (workspace.memberships[tabId] || null) !== (operation[key] || null))
+        throw new Error("This tab's group changed in another window. Try dragging it again.");
+}
+
+function moveInOrder(workspace, tabs, tabId, targetId, placement = "after") {
+    const ids = orderedWorkspaceTabs(workspace, tabs.filter((tab) => !tab.pinned)).map((tab) => tab.id).filter((id) => id !== tabId);
+    const targetIndex = ids.indexOf(targetId);
+    ids.splice(targetIndex === -1 ? ids.length : targetIndex + Number(placement === "after"), 0, tabId);
+    workspace.tabOrder = ids;
+}
+
+function appendToSection(workspace, tabs, tab) {
+    const groupId = workspace.memberships[tab.id];
+    const peers = orderedWorkspaceTabs(workspace, tabs).filter((other) => other.id !== tab.id && !other.pinned &&
+        (groupId ? workspace.memberships[other.id] === groupId : !workspace.memberships[other.id] && other.windowId === tab.windowId));
+    moveInOrder(workspace, tabs, tab.id, peers.at(-1)?.id);
+}
+
+function defaultGroupName(workspace) {
+    const names = new Set(workspace.groups.map((group) => group.name.toLowerCase()));
+    let name = "New group";
+    for (let suffix = 2; names.has(name.toLowerCase()); suffix += 1)
+        name = `New group (${suffix})`;
+    return name;
+}
+
 export function pruneMemberships(workspace, tabs) {
-    const liveIds = new Set(tabs.map((tab) => tab.id));
+    const liveIds = new Set(tabs.filter((tab) => !tab.pinned).map((tab) => tab.id));
     const groupIds = new Set(workspace.groups.map((group) => group.id));
     for (const [id, groupId] of Object.entries(workspace.memberships)) {
         if (!liveIds.has(Number(id)) || !groupIds.has(groupId))
@@ -102,6 +142,7 @@ export function pruneMemberships(workspace, tabs) {
         if (workspace.memberships[tabId] !== groupId)
             delete workspace.lastActive[groupId];
     }
+    workspace.tabOrder = normalizedTabOrder(workspace.tabOrder).filter((id) => liveIds.has(id));
 }
 
 export function rememberActiveTab(workspace, tabId) {
@@ -111,6 +152,7 @@ export function rememberActiveTab(workspace, tabId) {
 }
 
 export function replaceMemberTab(workspace, removedId, addedId) {
+    workspace.tabOrder = normalizedTabOrder((workspace.tabOrder || []).map((id) => id === removedId ? addedId : id));
     const groupId = workspace.memberships[removedId];
     if (!groupId)
         return;
@@ -127,6 +169,12 @@ export function applyWorkspaceOperation(current, operation, context) {
     const workspace = structuredClone(current);
     const { tabs, now, createId } = context;
     const liveTab = (id) => requireItem(tabs, id, "Tab");
+    const regularTab = (id) => {
+        const tab = liveTab(id);
+        if (tab.pinned)
+            throw new Error("Unpin this tab before adding it to a group or changing its order.");
+        return tab;
+    };
     let result = {};
     switch (operation.action) {
         case "save-tab": {
@@ -201,7 +249,7 @@ export function applyWorkspaceOperation(current, operation, context) {
                 throw new Error("Select at least one open tab.");
             const ids = new Set(operation.tabIds);
             for (const id of ids)
-                liveTab(id);
+                regularTab(id);
             group.name = name;
             group.color = operation.color;
             group.revision += 1;
@@ -221,10 +269,57 @@ export function applyWorkspaceOperation(current, operation, context) {
             result = { group };
             break;
         }
+        case "rename-group": {
+            const group = requireItem(workspace.groups, operation.id, "Group");
+            checkRevision(group, operation.expectedRevision);
+            group.name = uniqueName(workspace.groups, operation.name, group.id, "Group name");
+            group.revision += 1;
+            result = { group };
+            break;
+        }
         case "assign-tab": {
-            liveTab(operation.tabId);
+            const tab = regularTab(operation.tabId);
+            checkMembership(workspace, tab.id, operation, "expectedGroupId");
             const id = operation.groupId ? requireItem(workspace.groups, operation.groupId, "Group").id : null;
             assignTab(workspace, operation.tabId, id);
+            if (operation.append !== false)
+                appendToSection(workspace, tabs, tab);
+            break;
+        }
+        case "drop-tab": {
+            const tab = regularTab(operation.tabId);
+            const target = regularTab(operation.targetTabId);
+            if (tab.id === target.id)
+                throw new Error("Choose another tab to drop onto.");
+            if (!["before", "after", "group"].includes(operation.placement))
+                throw new Error("Choose a valid drop position.");
+            checkMembership(workspace, tab.id, operation, "expectedGroupId");
+            checkMembership(workspace, target.id, operation, "expectedTargetGroupId");
+            let groupId = workspace.memberships[target.id];
+            if (operation.placement === "group") {
+                let created = false;
+                if (!groupId) {
+                    const group = { id: createId(), name: defaultGroupName(workspace), color: "purple", revision: 1 };
+                    workspace.groups.push(group);
+                    groupId = group.id;
+                    assignTab(workspace, target.id, groupId);
+                    created = true;
+                }
+                assignTab(workspace, tab.id, groupId);
+                appendToSection(workspace, tabs, tab);
+                if (!workspace.lastActive[groupId]) {
+                    const active = [target, tab].find((member) => member.active);
+                    if (active)
+                        rememberActiveTab(workspace, active.id);
+                }
+                result = { group: requireItem(workspace.groups, groupId, "Group"), created };
+            }
+            else {
+                if (!groupId && tab.windowId !== target.windowId)
+                    throw new Error("Ungrouped tabs can only be reordered within their own window. Drop onto a tab to group across windows.");
+                assignTab(workspace, tab.id, groupId || null);
+                moveInOrder(workspace, tabs, tab.id, target.id, operation.placement);
+            }
             break;
         }
         case "remove-group": {
@@ -244,7 +339,7 @@ export function applyWorkspaceOperation(current, operation, context) {
             workspace.groups.push(group);
             for (const id of Array.isArray(removed.tabIds) ? removed.tabIds : []) {
                 // Undo must not steal tabs that have since joined another group.
-                if (tabs.some((tab) => tab.id === id) && !workspace.memberships[id])
+                if (tabs.some((tab) => tab.id === id && !tab.pinned) && !workspace.memberships[id])
                     assignTab(workspace, id, group.id);
             }
             if (workspace.memberships[removed.lastActiveId] === group.id)

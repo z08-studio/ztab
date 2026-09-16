@@ -9,21 +9,15 @@
   </head>
   <body class="side-panel">
     <main class="app">
-      <header class="brandbar">
-        <span class="brand"><img src="icons/icon32.png" alt="" width="24" height="24" />Ztab <span id="private-label" class="private-label" hidden>Private</span></span>
-        <div class="shortcut-help">
-          <button id="refresh" class="icon-button" type="button" aria-label="Refresh tabs" title="Refresh tabs"></button>
-          <button id="keyboard-help" class="icon-button" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"></button>
-        </div>
-      </header>
       <nav class="view-tabs" role="tablist" aria-label="Ztab views">
         <button id="nav-tabs" role="tab" aria-controls="workspace-panel" aria-selected="true" data-view="tabs" type="button">Tabs <span id="tabs-count" class="count"></span></button>
-        <button id="nav-groups" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="groups" tabindex="-1" type="button">Groups <span id="groups-count" class="count"></span></button>
         <button id="nav-saved" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="saved" tabindex="-1" type="button">Saved <span id="saved-count" class="count"></span></button>
       </nav>
       <section id="workspace-panel" class="workspace-panel" role="tabpanel" aria-labelledby="nav-tabs">
-        <label class="search-wrap"><span id="search-icon"></span><input id="search" type="search" placeholder="Search tabs…" aria-label="Search tabs" autocomplete="off" /></label>
-        <div id="group-tools" class="group-toolbar" hidden><span>Your groups</span><button id="new-group" class="primary" type="button">New group</button></div>
+        <div class="search-toolbar">
+          <label class="search-wrap"><span id="search-icon"></span><input id="search" type="search" placeholder="Search tabs…" aria-label="Search tabs" autocomplete="off" /></label>
+          <button id="refresh" class="icon-button" type="button" aria-label="Refresh tabs" title="Refresh tabs"></button>
+        </div>
         <div id="saved-tools" class="saved-tools" hidden>
           <button id="save-current" class="primary" type="button">Save current tab</button>
           <div class="library-toolbar">
@@ -33,12 +27,17 @@
         </div>
         <div id="mode-bar" class="mode-bar" hidden></div>
         <div id="tab-list" class="tab-list" role="list" aria-label="Open tabs" tabindex="0"></div>
+        <div id="ungroup-drop" class="ungroup-drop" hidden>Remove from group</div>
       </section>
+      <div id="drag-announcement" class="drag-announcement" role="status" aria-live="polite"></div>
       <div id="status" class="status" role="status" aria-live="polite" hidden></div>
       <footer class="summary-footer">
         <p id="summary" class="summary">Loading tabs…</p>
-        <span class="footer-help" title="Arrow keys select; Enter opens">↑↓ <span>Select</span> ↵ <span>Open</span></span>
-        <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
+        <span id="private-label" class="private-label" hidden>Private</span>
+        <span class="footer-actions">
+          <button id="keyboard-help" class="icon-button" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"></button>
+          <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
+        </span>
       </footer>
     </main>
     <script type="module" src="src/tab-tree.js"></script>
