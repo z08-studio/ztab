@@ -54,6 +54,8 @@ Choose **Save page** from a tab's `···` menu, or **Save current tab** in Save
 
 Use collections and search to organize Saved. Edit a page to change its title, URL, or collection. Opening a saved page reuses an exact matching tab in the same browsing mode, or opens a new tab in the panel's window. The page remains in Saved. Removing a saved page offers **Undo**.
 
+Saved displays page icons through Chrome's favicon service, including for existing entries and pages whose tabs have closed. The `favicon` permission allows this lookup from the saved URL; no library migration is needed. When an icon cannot load, Ztab keeps a title-initial placeholder.
+
 Saved pages and collections remain across browser restarts. Incognito windows use a separate temporary library, cleared when all incognito windows close.
 
 ## One pinned workspace in every window

@@ -29,6 +29,7 @@ Ztab, previously named TabSpan, runs entirely on your device.
 | `sidePanel` | Show the cross-window tab manager inside Chrome's side panel. |
 | `tabGroups` | Preserve existing tab groups and their names, colors, and collapsed state when merging windows. |
 | `system.display` | Read display names and positions to label windows when multiple displays are connected. Ztab does not change display settings. |
+| `favicon` | Read website icons through Chrome's favicon service so Saved pages can display their icons after their tabs close. Saved URLs are not sent to a third-party icon service. |
 
 Ztab's own Groups are virtual groups of open tabs. Creating or editing one does not create or change a Chrome native tab group and requires no additional permission.
 

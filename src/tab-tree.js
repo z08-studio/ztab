@@ -92,12 +92,21 @@ function matchesTab(tab, query) {
 
 function tabIcon(tab) {
     const placeholder = () => node("span", "tab-placeholder", (tab.title || "?").trim().charAt(0).toUpperCase());
-    if (!tab.favIconUrl)
+    let source = tab.favIconUrl;
+    if (!source && canSave(tab)) {
+        // Saved pages only store their URL. Chrome can resolve their icons even
+        // after the original tab closes, without migrating existing entries.
+        const cached = new URL(chrome.runtime.getURL("/_favicon/"));
+        cached.searchParams.set("pageUrl", tab.url);
+        cached.searchParams.set("size", "32");
+        source = cached.href;
+    }
+    if (!source)
         return placeholder();
     const image = node("img", "tab-icon");
     image.alt = "";
     image.draggable = false;
-    image.src = tab.favIconUrl;
+    image.src = source;
     image.addEventListener("error", () => image.replaceWith(placeholder()), { once: true });
     return image;
 }

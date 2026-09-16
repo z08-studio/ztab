@@ -95,6 +95,10 @@ Displays the cross-window tab manager when the toolbar button or opening shortcu
 
 Reads and restores existing tab groups, including their names, colors, and collapsed state, when Merge here moves tabs to another window.
 
+### favicon
+
+Reads page icons through Chrome's favicon service to identify Saved pages, including existing entries and pages without an open tab. No saved URLs are sent to a third-party icon service.
+
 ## Privacy fields
 
 - Single purpose: Manage tabs across Chrome windows through one live side panel, with shared pinned tabs and keyboard navigation.
