@@ -1,5 +1,5 @@
 import { buildTabTreeModel, flattenTabTreeTabs, formatShortcut, getMoveTargets, getPinnedTabs, getUnpinnedTabTree } from "./shared/tab-tree.js";
-import { createTab, getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, getWindow, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, updateTab, updateWindow } from "./background/chrome-api.js";
+import { getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, updateTab, updateWindow } from "./background/chrome-api.js";
 import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_SHOW_PINNED_TABS_KEY, STORAGE_WORKSPACE_KEY } from "./background/constants.js";
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
 import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
@@ -456,11 +456,11 @@ async function closeTab(tabId) {
     const tab = tabById(tabId);
     if (!tab || tab.pinned || isBusy())
         return;
-    const groupId = state.workspace.memberships[tab.id];
     const selected = [...elements["tab-list"].querySelectorAll("[data-select-id]")].map((control) => control.dataset.selectId);
     const index = selected.indexOf(`tab-${tab.id}`);
     state.busy = true;
     refreshGeneration += 1;
+    setStatus("");
     render();
     try { await removeTabs([tab.id]); }
     finally {
@@ -471,17 +471,6 @@ async function closeTab(tabId) {
     const remaining = [...elements["tab-list"].querySelectorAll("[data-select-id]")];
     selectRow(remaining[Math.min(index, remaining.length - 1)]?.dataset.selectId || null);
     elements["tab-list"].focus({ preventScroll: true });
-    const canReopen = /^(https?:|chrome:|about:)/.test(tab.url);
-    setStatus("Tab closed", canReopen ? [{ label: "Undo", title: "Reopen this page; page history and form entries are not restored", run: async () => {
-        const original = await getWindow(tab.windowId);
-        const windowId = original && original.incognito === state.incognito ? original.id : state.currentWindowId;
-        const restored = await createTab({ windowId, url: tab.url, ...(original ? { index: tab.index } : {}), active: false });
-        if (groupId && groupById(groupId)) {
-            try { await workspaceAction({ action: "assign-tab", tabId: restored.id, groupId }); }
-            catch { setStatus("Page reopened. Its group could not be restored."); }
-        }
-        await refreshTree();
-    } }] : []);
 }
 
 async function confirmMove(targetId) {

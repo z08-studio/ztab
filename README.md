@@ -86,7 +86,7 @@ Open the keyboard button in the panel, then **Customize panel shortcut**, or cho
 2. Find the window and tab you need in the side panel.
 3. Click a tab title to open it, close a regular tab with **×**, or use **··· → Move to window…**.
 
-After closing a page, **Undo** reopens its URL and restores its Ztab group when possible. It does not restore navigation history or unsaved form entries.
+Closing a tab updates the list directly, without a success notice or undo action.
 
 Select **Merge here** beside another window's heading to bring its tabs into the window hosting the side panel. Regular tabs are appended in their original order, tab groups stay together, and your current page stays selected. Existing pinned apps are kept, shared pinned copies are deduplicated by site, and unique pinned tabs are moved with their pinned state intact.
 
