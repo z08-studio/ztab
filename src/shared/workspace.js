@@ -131,6 +131,28 @@ function defaultGroupName(workspace) {
     return name;
 }
 
+function bulkTabs(tabs, ids) {
+    if (!Array.isArray(ids) || ids.length === 0 || ids.some((id) => !Number.isInteger(id) || id < 0) || new Set(ids).size !== ids.length)
+        throw new Error("Select one or more distinct open tabs.");
+    return ids.map((id) => {
+        const tab = requireItem(tabs, id, "Tab");
+        if (tab.pinned)
+            throw new Error("Pinned tabs cannot be included in bulk actions. Update your selection and try again.");
+        return tab;
+    });
+}
+
+function checkBulkMemberships(workspace, tabs, expected) {
+    if (!expected || typeof expected !== "object" || Array.isArray(expected))
+        throw new Error("The selection's groups could not be checked. Update your selection and try again.");
+    for (const tab of tabs) {
+        if (!Object.hasOwn(expected, tab.id) || (expected[tab.id] !== null && typeof expected[tab.id] !== "string"))
+            throw new Error("The selection's groups could not be checked. Update your selection and try again.");
+        if ((workspace.memberships[tab.id] || null) !== expected[tab.id])
+            throw new Error("A selected tab's group changed in another window. Update your selection and try again.");
+    }
+}
+
 export function pruneMemberships(workspace, tabs) {
     const liveIds = new Set(tabs.filter((tab) => !tab.pinned).map((tab) => tab.id));
     const groupIds = new Set(workspace.groups.map((group) => group.id));
@@ -177,6 +199,61 @@ export function applyWorkspaceOperation(current, operation, context) {
     };
     let result = {};
     switch (operation.action) {
+        case "bulk-save-tabs": {
+            const selected = bulkTabs(tabs, operation.tabIds);
+            const additions = [];
+            const urls = new Set(workspace.saved.map((item) => item.url));
+            result = { completedIds: [], skippedIds: [], savedCount: 0, duplicateCount: 0 };
+            for (const tab of selected) {
+                const address = tab.pendingUrl || tab.url || "";
+                if (!/^https?:\/\//i.test(address)) {
+                    result.skippedIds.push(tab.id);
+                    continue;
+                }
+                const url = savedUrl(address);
+                result.completedIds.push(tab.id);
+                if (urls.has(url)) {
+                    result.duplicateCount += 1;
+                    continue;
+                }
+                urls.add(url);
+                additions.push({ id: createId(), title: (tab.title || url).slice(0, 500), url, collectionId: null, createdAt: now, revision: 1 });
+                result.savedCount += 1;
+            }
+            workspace.saved.unshift(...additions);
+            break;
+        }
+        case "bulk-assign-tabs":
+        case "bulk-create-group": {
+            const selected = bulkTabs(tabs, operation.tabIds);
+            checkBulkMemberships(workspace, selected, operation.expectedMemberships);
+            let group = null;
+            if (operation.action === "bulk-create-group") {
+                const name = uniqueName(workspace.groups, operation.name, null, "Group name");
+                if (!GROUP_COLORS.includes(operation.color))
+                    throw new Error("Choose a group color.");
+                group = { id: createId(), name, color: operation.color, revision: 1 };
+                workspace.groups.push(group);
+            }
+            else if (operation.groupId !== null) {
+                if (typeof operation.groupId !== "string" || !operation.groupId)
+                    throw new Error("Choose an existing group or remove tabs from their groups.");
+                group = requireItem(workspace.groups, operation.groupId, "Group");
+            }
+            // Assign the whole selection before appending so selected members
+            // already in the destination also end up together in input order.
+            for (const tab of selected)
+                assignTab(workspace, tab.id, group?.id || null);
+            for (const tab of selected)
+                appendToSection(workspace, tabs, tab);
+            if (group && !workspace.lastActive[group.id]) {
+                const active = selected.find((tab) => tab.active);
+                if (active)
+                    rememberActiveTab(workspace, active.id);
+            }
+            result = { completedIds: selected.map((tab) => tab.id), ...(group ? { group } : {}) };
+            break;
+        }
         case "save-tab": {
             const tab = liveTab(operation.tabId);
             const url = savedUrl(tab.pendingUrl || tab.url);

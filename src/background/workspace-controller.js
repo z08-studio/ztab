@@ -3,6 +3,7 @@ import * as chromeApi from "./chrome-api.js";
 import { MESSAGE_WORKSPACE, STORAGE_BROWSER_SESSION_KEY, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "./constants.js";
 import { applyWorkspaceOperation, orderedWorkspaceTabs, pruneMemberships, readWorkspace, rememberActiveTab, replaceMemberTab, savedUrl } from "../shared/workspace.js";
 import { isSyncWindow } from "../shared/tab-utils.js";
+import { runBulkTabAction } from "./bulk-tab-actions.js";
 
 export function createWorkspaceController(dependencies = {}) {
     const api = { ...chromeApi, ...dependencies.api };
@@ -51,7 +52,26 @@ export function createWorkspaceController(dependencies = {}) {
         pruneMemberships(workspace, tabs);
         let result = {};
 
-        if (operation.action === "activate-group") {
+        if (["bulk-close-tabs", "bulk-move-tabs"].includes(operation.action)) {
+            result = await runBulkTabAction(operation, { windows, incognito }, api);
+            try {
+                const latestWindows = await api.getAllNormalWindowsWithTabs();
+                pruneMemberships(workspace, scopedTabs(latestWindows, incognito));
+                // A batch may close its panel's window, including the last private
+                // window. Finish in the worker without recreating private storage.
+                if (incognito && !latestWindows.some((win) => win.type === "normal" && win.incognito))
+                    await api.storageRemove([record.key], record.area);
+                else
+                    await persist(record, workspace);
+            }
+            catch {
+                // Browser mutations cannot be rolled back by a storage failure.
+                // Keep their actual results so the panel can clear completed IDs.
+                result.warning = "The tab action finished, but the local library could not be refreshed. Refresh Ztab to update the list.";
+            }
+            return { workspace, ...result };
+        }
+        else if (operation.action === "activate-group") {
             if (!workspace.groups.some((group) => group.id === operation.id))
                 throw new Error("Group no longer exists.");
             const members = orderedWorkspaceTabs(workspace, tabs.filter((tab) => workspace.memberships[tab.id] === operation.id));

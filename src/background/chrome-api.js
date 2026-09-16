@@ -253,6 +253,18 @@ export function updateWindow(windowId, updateInfo) {
     });
 }
 
+export function createWindow(createInfo) {
+    return new Promise((resolve, reject) => {
+        chrome.windows.create(createInfo, (win) => {
+            const error = runtimeError();
+            if (error)
+                reject(error);
+            else
+                resolve(win);
+        });
+    });
+}
+
 export function createTab(createInfo) {
     return new Promise((resolve, reject) => {
         chrome.tabs.create(createInfo, (tab) => {

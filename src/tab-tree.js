@@ -6,6 +6,8 @@ import { emptyWorkspace, GROUP_COLORS, orderedWorkspaceTabs, savedUrl } from "./
 import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
 import { createDisplayReader } from "./display-info.js";
 import { createTabDragController } from "./tab-drag.js";
+import { createTabSelection } from "./tab-selection.js";
+import { selectableTabs } from "./shared/tab-selection.js";
 
 const state = {
     tree: [], currentWindowId: null, activeTabId: null, focusedTabId: null, incognito: false,
@@ -29,6 +31,20 @@ const groupById = (id) => state.workspace.groups.find((group) => group.id === id
 const membersOf = (id) => orderedWorkspaceTabs(state.workspace, allTabs()).filter((tab) => !tab.pinned && state.workspace.memberships[tab.id] === id);
 const isBusy = () => state.busy || state.mergingWindowId !== null;
 const counted = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+const selection = createTabSelection({
+    getTabs: () => {
+        const ordered = orderedWorkspaceTabs(state.workspace, allTabs());
+        // Match the visual order: groups first, then each window's loose tabs.
+        return [...state.workspace.groups.flatMap((group) => ordered.filter((tab) => state.workspace.memberships[tab.id] === group.id)),
+            ...state.tree.flatMap((win) => ordered.filter((tab) => tab.windowId === win.id && !state.workspace.memberships[tab.id]))];
+    },
+    getMatchingTabs: () => selectableTabs(allTabs(), state.workspace.groups, state.workspace.memberships, state.query.tabs),
+    getGroups: () => state.workspace.groups, getMemberships: () => state.workspace.memberships, getWindows: () => state.tree,
+    isAvailable: () => state.view === "tabs" && state.movingTabId === null,
+    isBusy, render, workspaceAction, refreshTree, setStatus, onError: showActionError,
+    onGroupAssigned: (id) => state.collapsedGroups.delete(id),
+    onEnter: () => { dragController?.cancel(); closeMenu(); state.renamingGroup = null; }
+});
 
 function button(text, label, handler, className = "text-button", iconName = null) {
     const control = node("button", className, text);
@@ -145,15 +161,30 @@ function renderTabRow(tab, inGroup = false) {
     row.dataset.groupId = group?.id || "";
     const meta = [hostFromUrl(tab.url), inGroup || tab.pinned ? tab.windowLocation : "",
         tab.audible ? (tab.muted ? "Muted" : "Audio") : ""].filter(Boolean).join(" · ");
-    const open = button("", `Open ${tab.title}`, () => activateTab(tab.id), "open-row");
+    const open = button("", `${selection.active() ? "Select" : "Open"} ${tab.title}`, (event) => {
+        if (tab.pinned && (event.metaKey || event.ctrlKey || event.shiftKey)) return;
+        if (!selection.selectTab(tab, event)) return activateTab(tab.id);
+    }, "open-row");
+    if (selection.active()) {
+        open.disabled = tab.pinned || isBusy();
+        if (!tab.pinned) {
+            open.setAttribute("aria-pressed", String(selection.has(tab.id)));
+            row.classList.toggle("bulk-selected", selection.has(tab.id));
+            row.append(selection.checkbox([tab], `Select ${tab.title}`, `select-tab-${tab.id}`, tab));
+            row.addEventListener("click", (event) => {
+                if (!event.target.closest("button, input")) selection.selectTab(tab, event);
+            });
+        }
+    }
     open.title = `${tab.title}\n${tab.url}\n${tab.windowLocation}`;
     open.draggable = false;
-    if (!tab.pinned && !state.query.tabs.trim() && !isBusy())
+    if (!tab.pinned && !selection.active() && !state.query.tabs.trim() && !isBusy())
         open.dataset.dragTabId = String(tab.id);
     if (active)
         open.setAttribute("aria-current", "page");
     open.append(tabIcon(tab), rowCopy(tab.title, meta));
     row.append(selectable(open, `tab-${tab.id}`, row));
+    if (selection.active()) return row;
     const more = button("", `More actions for ${tab.title}`, () => tabMenu(more, tab), "icon-button", "more");
     more.setAttribute("aria-haspopup", "menu");
     more.dataset.focusKey = `more-tab-${tab.id}`;
@@ -190,11 +221,12 @@ function empty(title, description, iconName) {
     return wrapper;
 }
 
-function windowHeading(win, count) {
+function windowHeading(win, tabs) {
     const heading = node("div", `window-heading ${win.isCurrentWindow ? "current-heading" : "other-heading"}`);
     const left = node("span", "heading-left");
     const title = node("span", "window-title");
-    title.append(node("span", "", win.label), node("span", "count", String(count)));
+    if (selection.active()) left.append(selection.checkbox(tabs, `Select tabs in ${win.label}`, `select-window-${win.id}`));
+    title.append(node("span", "", win.label), node("span", "count", String(tabs.length)));
     left.append(title);
     if (win.displayName) {
         const display = node("span", "window-display");
@@ -203,7 +235,7 @@ function windowHeading(win, count) {
         left.append(display);
     }
     heading.append(left);
-    if (!win.isCurrentWindow && state.currentWindowId !== null) {
+    if (!selection.active() && !win.isCurrentWindow && state.currentWindowId !== null) {
         const current = state.tree.find((item) => item.isCurrentWindow);
         const label = `Merge all tabs from ${win.label} into Current window`;
         const merge = button(state.mergingWindowId === win.id ? "Merging…" : "Merge here", label, () => mergeWindow(win.id), "text-button merge-action");
@@ -242,9 +274,9 @@ function renderTabs() {
         if (query && !tabs.length)
             continue;
         // A window with all tabs grouped or hidden still needs its merge action.
-        if (!tabs.length && win.isCurrentWindow)
+        if (!tabs.length && (win.isCurrentWindow || selection.active()))
             continue;
-        fragment.append(windowHeading(win, tabs.length));
+        fragment.append(windowHeading(win, tabs));
         tabs.forEach((tab) => fragment.append(renderTabRow(tab)));
         matches += tabs.length;
     }
@@ -293,6 +325,7 @@ function renderGroups(query) {
         ], showActionError), "icon-button", "more");
         more.setAttribute("aria-haspopup", "menu");
         more.dataset.focusKey = `more-${group.id}`;
+        if (selection.active()) heading.append(selection.checkbox(matches, `Select tabs in ${group.name}`, `select-group-${group.id}`));
         heading.append(toggle);
         if (state.renamingGroup?.id === group.id) {
             const draft = state.renamingGroup;
@@ -312,7 +345,8 @@ function renderGroups(query) {
             heading.append(input, button("Save", "Save group name", finishGroupRename));
         }
         else {
-            heading.append(selectable(jump, `group-${group.id}`, heading), node("span", "group-windows", counted(windows, "window")), more);
+            heading.append(selectable(jump, `group-${group.id}`, heading), node("span", "group-windows", counted(windows, "window")));
+            if (!selection.active()) heading.append(more);
         }
         card.append(heading);
         const list = node("div", "group-items");
@@ -432,6 +466,7 @@ function render() {
         const active = control.dataset.view === state.view;
         control.setAttribute("aria-selected", String(active));
         control.tabIndex = active ? 0 : -1;
+        control.disabled = isBusy();
     }
     elements["workspace-panel"].setAttribute("aria-labelledby", `nav-${state.view}`);
     elements["saved-tools"].hidden = state.view !== "saved";
@@ -456,9 +491,12 @@ function render() {
     const pinsHidden = !state.showPinnedTabs ? getPinnedTabs(state.tree).length : 0;
     elements.summary.textContent = state.view === "saved" ? `${workspace.saved.length} saved · ${counted(workspace.collections.length, "collection")}`
         : `${counted(allTabs().length, "tab")} · ${counted(state.tree.length, "window")}${pinsHidden ? ` · ${pinsHidden} pinned hidden` : ""}`;
+    selection.paint();
 }
 
 function switchView(view) {
+    if (isBusy()) return;
+    selection.reset();
     dragController?.cancel();
     closeMenu();
     state.scroll[state.view] = elements["tab-list"].scrollTop;
@@ -492,6 +530,7 @@ async function refreshTree({ preferActive = false } = {}) {
         state.selectedId = `tab-${state.activeTabId}`;
     if (state.movingTabId !== null && !tabById(state.movingTabId))
         state.movingTabId = null;
+    selection.prune();
     render();
 }
 
@@ -713,7 +752,9 @@ function shortcutLabel() {
 
 function keyboardHelp() {
     const body = node("div");
-    for (const [label, keys] of [["Open panel", shortcutLabel()], ["Select a row", "↑ / ↓"], ["Open selected row", "Enter"], ["Move between controls", "Tab / Shift+Tab"], ["Search this view", "⌘ / Ctrl + F"], ["Dismiss menu or dialog", "Esc"]]) {
+    for (const [label, keys] of [["Open panel", shortcutLabel()], ["Focus a row", "↑ / ↓"], ["Open or select focused row", "Enter"],
+        ["Select multiple tabs", "⌘ / Ctrl + click"], ["Select a range", "Shift + click"], ["Select all matching tabs", "⌘ / Ctrl + A"],
+        ["Move between controls", "Tab / Shift+Tab"], ["Search this view", "⌘ / Ctrl + F"], ["Dismiss or exit selection", "Esc"]]) {
         const row = node("div", "help-row");
         const value = node("kbd", "", keys);
         if (label === "Open panel")
@@ -751,7 +792,7 @@ function handleListKeys(event) {
 async function init() {
     dragController = createTabDragController({
         root: elements["workspace-panel"], list: elements["tab-list"], ungroupZone: elements["ungroup-drop"],
-        canDrag: () => state.view === "tabs" && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),
+        canDrag: () => state.view === "tabs" && !selection.active() && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),
         describeTab: (id) => {
             const tab = tabById(id);
             return tab && !tab.pinned ? { id, windowId: tab.windowId, groupId: state.workspace.memberships[id] || null } : null;

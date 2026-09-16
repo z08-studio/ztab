@@ -112,7 +112,7 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, desc
 
     root.addEventListener("pointerdown", (event) => {
         const handle = event.target.closest("[data-drag-tab-id]");
-        if (!handle || event.button !== 0 || event.pointerType === "touch" || !canDrag()) return;
+        if (!handle || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.pointerType === "touch" || !canDrag()) return;
         const source = describeTab(Number(handle.dataset.dragTabId));
         if (!source) return;
         pointer = { id: event.pointerId, source, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY };

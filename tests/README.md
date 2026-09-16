@@ -19,6 +19,9 @@ The tests cover:
 - inline grouping and local ordering: cross-window group creation, row ordering,
   pinned-tab rejection, stale drag protection, atomic storage writes, membership-safe
   renaming, backward-compatible order storage, pruning, and session reset.
+- batch selection: matching group names, visible range order, scope tri-state,
+  pruning, atomic group/save operations, partial close/move failures, live pin and
+  window changes, panel-window teardown, and new-window moves without blank tabs.
 - display assignment: overlapping windows, negative coordinates, duplicate/missing
   names, unavailable displays, optional permission handling, and API failures.
 
@@ -50,7 +53,19 @@ This smoke check does not verify store-delivered upgrades, Windows/Linux binding
 
 ## Inline groups and Saved checks in Chrome
 
-Verified on 2026-09-16 in an isolated Chrome profile using the actual extension runtime: cross-window drag grouping and inline rename, intra-group reorder, joining a collapsed group header, dragging a member out, a fast center-hover release doing nothing, and Escape cancellation. Reloading the panel preserved membership and local order. Before/after comparisons confirmed all tab IDs, Chrome tab indices, window IDs, and native `groupId` values remained unchanged. The current Node suite passes all 90 tests.
+### Batch-selection verification
+
+Verified on 2026-09-16 in an isolated Chrome for Testing 153.0.8010.12 profile using the actual extension pages and local sample tabs. Cmd-click and Ctrl-click enter selection, Shift-click follows visible rows and recovers after its anchor is collapsed, scope checkboxes include collapsed members, and Cmd+A works from a focused checkbox. Pinned tabs have no selection controls. Switching to Saved clears selection; external closure or pinning prunes selected IDs.
+
+Batch create/join/ungroup preserved native tab IDs, indices, window IDs, and Chrome group IDs; joining expanded a collapsed destination group. Saving five eligible pages and two internal pages saved five and left the two skipped pages selected; repeating the save reported existing entries without duplicates. Existing-window moves skipped tabs already there; new-window moves retained order without a blank placeholder. A compact-source move displayed its failure and retained selection. Compact-window closure succeeded after restarting the test service worker.
+
+Search retained hidden selections and showed their count. Closing hidden selections required the count confirmation; ordinary batch closure was immediate and silent, with no Undo. Closing a disposable panel's last tab still completed closure of another selected tab in another window. Escape dismissed a menu/dialog without exiting selection. Light/dark layouts were reviewed, and the 320×480 panel had no horizontal overflow; the list ended exactly at the fixed toolbar.
+
+The current suite passes 124 Node tests. Partial API/storage failures, stale membership, browsing-mode boundaries, and mid-operation changes have automated coverage. Windows/Linux shortcuts and a full browser restart were not manually retested in this pass. No new permission is required for batch actions. UI references: [batch selection](../docs/screenshots/bulk-selection.png) and [dark batch selection](../docs/screenshots/bulk-selection-dark.png).
+
+### Inline-group verification
+
+Verified on 2026-09-16 in an isolated Chrome profile using the actual extension runtime: cross-window drag grouping and inline rename, intra-group reorder, joining a collapsed group header, dragging a member out, a fast center-hover release doing nothing, and Escape cancellation. Reloading the panel preserved membership and local order. Before/after comparisons confirmed all tab IDs, Chrome tab indices, window IDs, and native `groupId` values remained unchanged. At that stage, all 90 Node tests passed.
 
 The same run verified long-list drag autoscrolling, silent member closure with visible list focus, empty-group retention, pinning through the tab menu in two windows, pinned collapse, group search, keyboard selection, saving pages, and collection creation. Tabs and Saved fit a 320px viewport in light/dark styles. Settings showed the display-name enable action before permission and the enabled state after a Chrome test permission override; actual monitor labels stayed on the same line as window names. The permission prompt itself, a full browser restart, and Windows/Linux behavior were not rechecked in this run.
 

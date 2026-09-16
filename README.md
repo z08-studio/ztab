@@ -48,6 +48,14 @@ Grouping and arranging tabs change only Ztab's list. They never move real tabs b
 
 Closing a tab removes its membership without a notice or undo action. Empty group names remain. **Ungroup tabs** removes a group while keeping its tabs open; that action offers **Undo**. Membership and local ordering survive panel reloads and service-worker suspension, but are cleared after a browser restart, extension reload, or update. Group definitions remain; groups are not saved sessions.
 
+## Select and manage several tabs
+
+Click **Select**, or Cmd-click (macOS) / Ctrl-click (Windows/Linux) a row, to start selecting tabs. Shift-click selects a range in the visible list. Group and window checkboxes select their matching tabs; **Select all** includes matching members of collapsed groups. Pinned tabs are excluded. Cmd/Ctrl+A selects matching tabs when focus is outside a text field.
+
+The bottom toolbar offers **Group**, **Move**, and **Close N**. Its `···` menu offers **Save to Saved** and **Remove from groups**. Grouping stays local to Ztab; Move transfers actual tabs into an existing or new window. Failed moves remain selected, and saving skips internal browser pages while reporting duplicates.
+
+Search keeps your selection and shows how many selected tabs are hidden. Closing is immediate unless some selected tabs are hidden by search, in which case Ztab confirms the total first. Closing has no Undo. **Done**, **Escape**, or switching to Saved clears the selection. Tabs closed or pinned elsewhere are removed from it automatically.
+
 ## Saved pages, kept locally
 
 Choose **Save page** from a tab's `···` menu, or **Save current tab** in Saved. HTTP(S) pages are stored in Ztab's own library, independently of Chrome bookmarks. A page is saved to **Unsorted** with its full URL, title, and save date. Saving the same full URL again opens its existing editor.

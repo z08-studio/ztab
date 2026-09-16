@@ -354,3 +354,164 @@ test("failed drag writes are atomic and later queued operations recover", async 
     assert.equal(success.workspace.groups.length, 1);
     assert.deepEqual(h.effects, []);
 });
+
+test("bulk saves keep full URLs, deduplicate within the selection, and report unsupported pages", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "save-tab", tabId: 11 });
+    h.windows[0].tabs[1].url = h.windows[0].tabs[0].url;
+    h.windows[0].tabs.push(
+        { id: 13, windowId: 1, title: "Settings", url: "chrome://settings/" },
+        { id: 14, windowId: 1, title: "Pending", url: "about:blank", pendingUrl: "https://example.org/?filter=all#new" },
+        { id: 15, windowId: 1, title: "Same pending page", url: "https://example.org/?filter=all#new" }
+    );
+    const result = await h.controller.request(1, { action: "bulk-save-tabs", tabIds: [11, 12, 13, 14, 15, 21] });
+    assert.deepEqual(result.completedIds, [11, 12, 14, 15, 21]);
+    assert.deepEqual(result.skippedIds, [13]);
+    assert.equal(result.savedCount, 2);
+    assert.equal(result.duplicateCount, 3);
+    assert.deepEqual(result.workspace.saved.map((item) => item.url), [
+        "https://example.org/?filter=all#new", "https://example.org/", "https://example.com/a?one=1#part"
+    ]);
+    assert.deepEqual(result.workspace.saved.map((item) => item.title), ["Pending", "Three", "One"]);
+    assert.ok(result.workspace.saved.every((item) => item.collectionId === null && item.revision === 1));
+    assert.deepEqual(h.effects, []);
+});
+
+test("bulk saves reject unsafe web addresses without leaving earlier selected pages saved", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "read" });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    h.windows[0].tabs[1].url = "https://user:secret@example.com/";
+    await assert.rejects(h.controller.request(1, { action: "bulk-save-tabs", tabIds: [11, 12] }), /username and password/);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+});
+
+test("bulk group creation spans windows and preserves selection order without browser mutations", async () => {
+    const h = harness();
+    const result = await h.controller.request(1, {
+        action: "bulk-create-group", tabIds: [21, 11], name: " Research ", color: "purple",
+        expectedMemberships: { 21: null, 11: null }
+    });
+    assert.deepEqual(result.completedIds, [21, 11]);
+    assert.equal(result.group.name, "Research");
+    assert.equal(result.group.color, "purple");
+    assert.equal(result.group.revision, 3);
+    assert.deepEqual(result.workspace.memberships, { 11: result.group.id, 21: result.group.id });
+    assert.equal(result.workspace.lastActive[result.group.id], 21);
+    assert.deepEqual(orderedWorkspaceTabs(result.workspace, h.windows.flatMap((win) => win.tabs))
+        .filter((tab) => result.workspace.memberships[tab.id] === result.group.id).map((tab) => tab.id), [21, 11]);
+    assert.deepEqual(h.windows[0].tabs.map((tab) => tab.id), [11, 12]);
+    assert.deepEqual(h.windows[1].tabs.map((tab) => tab.id), [21]);
+    assert.deepEqual(h.effects, []);
+});
+
+test("bulk assignment appends all selected tabs together and ungrouping returns them to their own window sections", async () => {
+    const h = harness();
+    h.windows[0].tabs.push({ id: 13, windowId: 1, url: "https://example.com/c" });
+    h.windows[1].tabs.push({ id: 22, windowId: 2, url: "https://example.org/d" });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Research", color: "blue", tabIds: [11, 21] });
+    const assigned = await h.controller.request(1, {
+        action: "bulk-assign-tabs", tabIds: [12, 11], groupId: group.id,
+        expectedMemberships: { 12: null, 11: group.id }
+    });
+    const tabs = h.windows.flatMap((win) => win.tabs);
+    const orderedMembers = (workspace) => orderedWorkspaceTabs(workspace, tabs)
+        .filter((tab) => workspace.memberships[tab.id] === group.id).map((tab) => tab.id);
+    assert.deepEqual(assigned.completedIds, [12, 11]);
+    assert.deepEqual(orderedMembers(assigned.workspace), [21, 12, 11]);
+    assert.equal(assigned.group.revision, group.revision + 1);
+    const ungrouped = await h.controller.request(2, {
+        action: "bulk-assign-tabs", tabIds: [12, 21, 11], groupId: null,
+        expectedMemberships: { 12: group.id, 21: group.id, 11: group.id }
+    });
+    assert.deepEqual(ungrouped.workspace.memberships, {});
+    assert.deepEqual(ungrouped.workspace.lastActive, {});
+    assert.equal(ungrouped.workspace.groups.length, 1);
+    assert.equal(ungrouped.group, undefined);
+    assert.deepEqual(orderedWorkspaceTabs(ungrouped.workspace, h.windows[0].tabs).map((tab) => tab.id), [13, 12, 11]);
+    assert.deepEqual(orderedWorkspaceTabs(ungrouped.workspace, h.windows[1].tabs).map((tab) => tab.id), [22, 21]);
+    assert.deepEqual(h.effects, []);
+});
+
+test("stale bulk membership rejects the whole selection and cannot steal tabs from another panel", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "green", tabIds: [21] });
+    await h.controller.request(2, { action: "assign-tab", tabId: 12, groupId: group.id });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    for (const operation of [
+        { action: "bulk-assign-tabs", groupId: group.id },
+        { action: "bulk-assign-tabs", groupId: null },
+        { action: "bulk-create-group", name: "New group", color: "purple" }
+    ]) {
+        await assert.rejects(h.controller.request(1, {
+            ...operation, tabIds: [11, 12], expectedMemberships: { 11: null, 12: null }
+        }), /group changed in another window/);
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    }
+    assert.deepEqual(h.effects, []);
+});
+
+test("bulk actions reject invalid selections and live pinned or out-of-scope tabs atomically", async () => {
+    const h = harness();
+    await h.controller.request(1, { action: "read" });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    h.windows[0].tabs[1].pinned = true;
+    h.windows.push({ id: 4, type: "popup", tabs: [{ id: 41, windowId: 4, url: "https://popup.example/" }] });
+    for (const tabIds of [undefined, [], [11, 11], ["11"], [-1], [1.5], [11, 999], [11, 12], [11, 31], [11, 41]]) {
+        for (const operation of [
+            { action: "bulk-save-tabs" },
+            { action: "bulk-assign-tabs", groupId: null },
+            { action: "bulk-create-group", name: "Research", color: "purple" }
+        ]) {
+            const expectedMemberships = Object.fromEntries((tabIds || []).map((id) => [id, null]));
+            await assert.rejects(h.controller.request(1, { ...operation, tabIds, expectedMemberships }));
+            assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+        }
+    }
+    assert.deepEqual(h.effects, []);
+});
+
+test("bulk grouping validates membership snapshots, destination, group names, and colors before changing data", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21] });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    for (const operation of [
+        { action: "bulk-assign-tabs", groupId: group.id, expectedMemberships: undefined },
+        { action: "bulk-assign-tabs", groupId: group.id, expectedMemberships: {} },
+        { action: "bulk-assign-tabs", groupId: group.id, expectedMemberships: { 11: false } },
+        { action: "bulk-assign-tabs", groupId: "missing", expectedMemberships: { 11: null } },
+        { action: "bulk-assign-tabs", expectedMemberships: { 11: null } },
+        { action: "bulk-create-group", name: " existing ", color: "purple", expectedMemberships: { 11: null } },
+        { action: "bulk-create-group", name: "", color: "purple", expectedMemberships: { 11: null } },
+        { action: "bulk-create-group", name: "Valid", color: "invalid", expectedMemberships: { 11: null } }
+    ]) {
+        await assert.rejects(h.controller.request(1, { ...operation, tabIds: [11] }));
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    }
+});
+
+test("failed bulk writes leave the whole library intact and later queued bulk actions recover", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21] });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    h.controls.failWrite = true;
+    for (const operation of [
+        { action: "bulk-save-tabs" },
+        { action: "bulk-assign-tabs", groupId: group.id },
+        { action: "bulk-create-group", name: "New group", color: "purple" }
+    ]) {
+        await assert.rejects(h.controller.request(1, {
+            ...operation, tabIds: [11, 12], expectedMemberships: { 11: null, 12: null }
+        }), /quota/);
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+    }
+    h.controls.failWrite = false;
+    const saved = await h.controller.request(1, { action: "bulk-save-tabs", tabIds: [11, 12] });
+    assert.equal(saved.savedCount, 2);
+    const grouped = await h.controller.request(1, {
+        action: "bulk-assign-tabs", groupId: group.id, tabIds: [11, 12], expectedMemberships: { 11: null, 12: null }
+    });
+    assert.deepEqual(grouped.completedIds, [11, 12]);
+    assert.deepEqual(grouped.workspace.memberships, { 11: group.id, 12: group.id, 21: group.id });
+    assert.deepEqual(h.effects, []);
+});

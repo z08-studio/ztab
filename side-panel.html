@@ -16,8 +16,10 @@
       <section id="workspace-panel" class="workspace-panel" role="tabpanel" aria-labelledby="nav-tabs">
         <div class="search-toolbar">
           <label class="search-wrap"><span id="search-icon"></span><input id="search" type="search" placeholder="Search tabs…" aria-label="Search tabs" autocomplete="off" /></label>
+          <button id="select-tabs" class="text-button" type="button" aria-pressed="false">Select</button>
           <button id="refresh" class="icon-button" type="button" aria-label="Refresh tabs" title="Refresh tabs"></button>
         </div>
+        <div id="selection-tools" class="selection-tools" hidden></div>
         <div id="saved-tools" class="saved-tools" hidden>
           <button id="save-current" class="primary" type="button">Save current tab</button>
           <div class="library-toolbar">
@@ -31,6 +33,19 @@
       </section>
       <div id="drag-announcement" class="drag-announcement" role="status" aria-live="polite"></div>
       <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+      <div id="bulk-toolbar" class="bulk-toolbar" role="region" aria-label="Selected tab actions" hidden>
+        <div class="bulk-summary">
+          <span id="bulk-count" role="status" aria-live="polite" aria-atomic="true">0 selected</span>
+          <button id="clear-selection" class="text-button" type="button">Clear</button>
+        </div>
+        <p id="bulk-feedback" class="bulk-feedback" role="status" aria-live="polite" hidden></p>
+        <div class="bulk-actions">
+          <button id="bulk-group" class="bulk-action" type="button">Group</button>
+          <button id="bulk-move" class="bulk-action" type="button">Move</button>
+          <button id="bulk-close" class="bulk-action destructive" type="button">Close</button>
+          <button id="bulk-more" class="bulk-action" type="button" aria-label="More selected tab actions" title="More selected tab actions"></button>
+        </div>
+      </div>
       <footer class="summary-footer">
         <p id="summary" class="summary">Loading tabs…</p>
         <span id="private-label" class="private-label" hidden>Private</span>
