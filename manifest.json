@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ztab: Tab Manager",
+  "name": "Ztab: Tab Manager",
   "version": "1.1.1",
   "description": "Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.",
   "permissions": ["tabs", "windows", "storage", "sidePanel", "tabGroups"],
@@ -9,7 +9,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open ztab",
+    "default_title": "Open Ztab",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"
@@ -21,7 +21,7 @@
         "default": "Ctrl+Shift+9",
         "mac": "Command+Shift+9"
       },
-      "description": "Open ztab"
+      "description": "Open Ztab"
     }
   },
   "side_panel": {

@@ -1,19 +1,19 @@
-# Privacy Policy (ztab)
+# Privacy Policy (Ztab)
 
-ztab, previously named TabSpan, runs entirely on your device.
+Ztab, previously named TabSpan, runs entirely on your device.
 
 ## Data collection
 
-- ztab does not collect, transmit, or sell personal data.
-- ztab does not send browsing data to external servers or use analytics.
+- Ztab does not collect, transmit, or sell personal data.
+- Ztab does not send browsing data to external servers or use analytics.
 - The websites you open retain their own privacy policies.
 
 ## Local data storage
 
-- ztab stores the pinned-site origin list, synchronization metadata, and the **Show pinned tabs** preference in `chrome.storage.local`.
+- Ztab stores the pinned-site origin list, synchronization metadata, and the **Show pinned tabs** preference in `chrome.storage.local`.
 - This data stays in your local Chrome profile and supports pinned tabs across windows on the same computer.
-- Existing local storage is retained when the same installed extension is updated from TabSpan to ztab.
-- Tab titles and full browsing URLs are processed locally to show and manage tabs; ztab does not upload or persist them.
+- Existing local storage is retained when the same installed extension is updated from TabSpan to Ztab.
+- Tab titles and full browsing URLs are processed locally to show and manage tabs; Ztab does not upload or persist them.
 
 ## Permissions
 

@@ -51,7 +51,7 @@ function runtimeError() {
 
 function assertElement(value, name) {
     if (!(value instanceof HTMLElement))
-        throw new Error(`ztab tab tree is missing ${name}`);
+        throw new Error(`Ztab tab tree is missing ${name}`);
     return value;
 }
 

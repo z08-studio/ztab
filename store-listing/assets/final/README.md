@@ -1,4 +1,4 @@
-# ztab upload-ready assets
+# Ztab upload-ready assets
 
 Positioning: **Another excellent tab manager for Chrome.**
 

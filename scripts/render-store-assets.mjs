@@ -70,7 +70,7 @@ function promoSvg({ width, height, small, iconDataUri }) {
         <rect width="${width}" height="${height}" fill="url(#smallShade)"/>
         <circle cx="421" cy="0" r="134" fill="none" stroke="#A58AFF" stroke-opacity=".15" stroke-width="26"/>
         <image href="${iconDataUri}" x="30" y="27" width="45" height="45"/>
-        <text x="87" y="61" fill="#F3F6FF" font-family="Manrope" font-size="33" font-weight="800" letter-spacing="-1">ztab</text>
+        <text x="87" y="61" fill="#F3F6FF" font-family="Manrope" font-size="33" font-weight="800" letter-spacing="-1">Ztab</text>
         <text x="32" y="125" fill="#FFFFFF" font-family="Manrope" font-size="29" font-weight="800" letter-spacing="-.9">
           <tspan x="32" dy="0">Another excellent</tspan>
           <tspan x="32" dy="38" fill="#B7CCFF" font-size="27">tab manager for Chrome.</tspan>
@@ -95,7 +95,7 @@ function promoSvg({ width, height, small, iconDataUri }) {
       <rect width="${width}" height="${height}" fill="url(#marqueeShade)"/>
       <circle cx="1200" cy="58" r="250" fill="#A58AFF" opacity=".05"/>
       <image href="${iconDataUri}" x="64" y="52" width="50" height="50"/>
-      <text x="128" y="90" fill="#F3F6FF" font-family="Manrope" font-size="37" font-weight="800" letter-spacing="-1.2">ztab</text>
+      <text x="128" y="90" fill="#F3F6FF" font-family="Manrope" font-size="37" font-weight="800" letter-spacing="-1.2">Ztab</text>
       <text x="64" y="197" fill="#FFFFFF" font-family="Manrope" font-size="51" font-weight="800" letter-spacing="-1.7">
         <tspan x="64" dy="0">Another excellent</tspan>
         <tspan x="64" dy="66" fill="#B7CCFF">tab manager for Chrome.</tspan>
@@ -158,7 +158,7 @@ function screenshotSvg({
       </g>
 
       <image href="${iconDataUri}" x="60" y="31" width="42" height="42"/>
-      <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">ztab</text>
+      <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">Ztab</text>
       <text x="1129" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">${pillar}</text>
       <text x="60" y="132" font-family="Manrope" font-size="52" font-weight="800" letter-spacing="-2">
         <tspan fill="#FFFFFF">${headlineLead}</tspan>
@@ -199,7 +199,7 @@ function keyboardScreenshotSvg({ screenshotDataUri, sourceWidth, sourceHeight, c
     <rect width="1280" height="800" fill="url(#keyboardBackground)"/>
     <circle cx="1185" cy="65" r="200" fill="#73DCC7" opacity=".04"/>
     <image href="${iconDataUri}" x="60" y="31" width="42" height="42"/>
-    <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">ztab</text>
+    <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">Ztab</text>
     <text x="1220" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">03 / KEYS AND INTERACTIONS</text>
     <text x="60" y="180" fill="#FFFFFF" font-family="Manrope" font-size="55" font-weight="800" letter-spacing="-2">
       <tspan x="60">Fast keys.</tspan>

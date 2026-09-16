@@ -28,6 +28,6 @@ export function registerTabTreeActionHandlers() {
         clearActionPopup(),
         enableActionSidePanel()
     ]).catch((error) => {
-        console.warn("ztab: failed to enable side panel action", error?.message || error);
+        console.warn("Ztab: failed to enable side panel action", error?.message || error);
     });
 }
