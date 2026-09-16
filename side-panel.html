@@ -3,36 +3,59 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>Ztab</title>
     <link rel="stylesheet" href="src/tab-tree.css" />
   </head>
   <body class="side-panel">
     <main class="app">
-      <header class="topbar">
-        <div class="shortcut-help" aria-label="Keyboard shortcuts">
-          <button id="open-shortcut" class="help-item shortcut-settings" type="button" title="Change this shortcut in Chrome's extension shortcut settings" aria-label="Customize the Ztab panel shortcut">
-            <span id="open-shortcut-keys" class="shortcut-keys"></span>
-            <span id="open-shortcut-label">Open panel</span>
-          </button>
-          <span class="help-separator" aria-hidden="true">·</span>
-          <span class="help-item"><kbd>↑</kbd><kbd>↓</kbd> Select</span>
-          <span class="help-separator" aria-hidden="true">·</span>
-          <span class="help-item"><kbd>Enter</kbd> Open</span>
+      <nav class="view-tabs" role="tablist" aria-label="Ztab views">
+        <button id="nav-tabs" role="tab" aria-controls="workspace-panel" aria-selected="true" data-view="tabs" type="button">Tabs <span id="tabs-count" class="count"></span></button>
+        <button id="nav-saved" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="saved" tabindex="-1" type="button">Saved <span id="saved-count" class="count"></span></button>
+      </nav>
+      <section id="workspace-panel" class="workspace-panel" role="tabpanel" aria-labelledby="nav-tabs">
+        <div class="search-toolbar">
+          <label class="search-wrap"><span id="search-icon"></span><input id="search" type="search" placeholder="Search tabs…" aria-label="Search tabs" autocomplete="off" /></label>
+          <button id="select-tabs" class="text-button" type="button" aria-pressed="false">Select</button>
+          <button id="sort-tabs" class="icon-button" type="button" aria-label="Sort tabs" title="Sort tabs" aria-haspopup="menu"></button>
+          <button id="refresh" class="icon-button" type="button" aria-label="Refresh tabs" title="Refresh tabs"></button>
         </div>
-        <button id="refresh" class="refresh-button" type="button">Refresh</button>
-      </header>
-
-      <div id="mode-bar" class="mode-bar" hidden></div>
-      <div id="status" class="status" role="status" aria-live="polite"></div>
-      <div id="tab-list" class="tab-list" role="listbox" aria-label="All tabs" tabindex="0"></div>
-
+        <div id="selection-tools" class="selection-tools" hidden></div>
+        <div id="saved-tools" class="saved-tools" hidden>
+          <button id="save-current" class="primary" type="button">Save current tab</button>
+          <div class="library-toolbar">
+            <select id="collection" aria-label="Saved collection"><option value="all">All saved</option></select>
+            <button id="new-collection" class="icon-button" type="button" aria-label="New collection" title="New collection"></button>
+          </div>
+        </div>
+        <div id="mode-bar" class="mode-bar" hidden></div>
+        <div id="tab-list" class="tab-list" role="list" aria-label="Open tabs" tabindex="0"></div>
+        <div id="ungroup-drop" class="ungroup-drop" hidden>Remove from group</div>
+      </section>
+      <div id="drag-announcement" class="drag-announcement" role="status" aria-live="polite"></div>
+      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+      <div id="bulk-toolbar" class="bulk-toolbar" role="region" aria-label="Selected tab actions" hidden>
+        <div class="bulk-summary">
+          <span id="bulk-count" role="status" aria-live="polite" aria-atomic="true">0 selected</span>
+          <button id="clear-selection" class="text-button" type="button">Clear</button>
+        </div>
+        <p id="bulk-feedback" class="bulk-feedback" role="status" aria-live="polite" hidden></p>
+        <div class="bulk-actions">
+          <button id="bulk-group" class="bulk-action" type="button">Group</button>
+          <button id="bulk-move" class="bulk-action" type="button">Move</button>
+          <button id="bulk-close" class="bulk-action destructive" type="button">Close</button>
+          <button id="bulk-more" class="bulk-action" type="button" aria-label="More selected tab actions" title="More selected tab actions"></button>
+        </div>
+      </div>
       <footer class="summary-footer">
-        <span class="brand-name">Ztab</span>
-        <p id="summary" class="summary">Loading tabs...</p>
-        <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
+        <p id="summary" class="summary">Loading tabs…</p>
+        <span id="private-label" class="private-label" hidden>Private</span>
+        <span class="footer-actions">
+          <button id="keyboard-help" class="icon-button" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"></button>
+          <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
+        </span>
       </footer>
     </main>
-
     <script type="module" src="src/tab-tree.js"></script>
   </body>
 </html>

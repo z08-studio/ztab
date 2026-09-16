@@ -1,735 +1,911 @@
-import {
-    buildTabTreeModel,
-    flattenTabTreeTabs,
-    flattenVisibleTabTreeTabs,
-    formatShortcut,
-    getAdjacentTabId,
-    getMoveTargets,
-    getPinnedTabs,
-    getUnpinnedTabTree
-} from "./shared/tab-tree.js";
-import { getCommands, moveTabs, openShortcutSettings, storageGet, updateTab } from "./background/chrome-api.js";
-import { MESSAGE_MERGE_WINDOWS, STORAGE_SHOW_PINNED_TABS_KEY } from "./background/constants.js";
+import { buildTabTreeModel, flattenTabTreeTabs, formatShortcut, getMoveTargets, getPinnedTabs } from "./shared/tab-tree.js";
+import { getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, storageSet, updateTab, updateWindow } from "./background/chrome-api.js";
+import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_SHOW_PINNED_TABS_KEY, STORAGE_WORKSPACE_KEY } from "./background/constants.js";
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
-
-const MODE_BROWSE = "browse";
-const MODE_MOVE = "move";
-const AUTO_REFRESH_DELAY_MS = 150;
+import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
+import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
+import { createDisplayReader } from "./display-info.js";
+import { createTabDragController } from "./tab-drag.js";
+import { createTabSelection } from "./tab-selection.js";
+import { selectableTabs } from "./shared/tab-selection.js";
+import { buildTabPresentation, resolveTabSort, TAB_SORT_STORAGE_KEY } from "./shared/tab-sorting.js";
 
 const state = {
-    tree: [],
-    tabs: [],
-    currentWindowId: null,
-    activeTabId: null,
-    selectedTabId: null,
-    selectedTargetIndex: 0,
-    mode: MODE_BROWSE,
-    movingTabId: null,
-    mergingWindowId: null,
-    showPinnedTabs: true
+    tree: [], currentWindowId: null, activeTabId: null, focusedTabId: null, incognito: false,
+    workspace: emptyWorkspace(""), view: "tabs", query: { tabs: "", saved: "" },
+    scroll: { tabs: 0, saved: 0 }, collection: "all", pinnedExpanded: true,
+    collapsedGroups: new Set(), selectedId: null, showPinnedTabs: true,
+    movingTabId: null, mergingWindowId: null, busy: false, shortcut: "", renamingGroup: null,
+    sortMode: "recent", sortNow: false, pointerInside: false, presentation: { sections: [], tabs: [], snapshot: null }
 };
-
+const elements = Object.fromEntries([
+    "summary", "refresh", "keyboard-help", "mode-bar", "status", "tab-list", "search",
+    "saved-tools", "save-current", "collection", "new-collection", "workspace-panel", "ungroup-drop", "drag-announcement", "sort-tabs"
+].map((id) => [id, document.getElementById(id)]));
 let refreshTimer = null;
 let refreshGeneration = 0;
+let noticeVersion = 0;
+let dragController = null;
+let interactionVersion = 0;
+const displayReader = createDisplayReader({ onChange: scheduleRefresh });
+const allTabs = () => flattenTabTreeTabs(state.tree);
+const tabById = (id) => allTabs().find((tab) => tab.id === id);
+const groupById = (id) => state.workspace.groups.find((group) => group.id === id);
+const membersOf = (id) => state.presentation.sections.find((section) => section.kind === "group" && section.group.id === id)?.tabs || [];
+const isBusy = () => state.busy || state.mergingWindowId !== null;
+const counted = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+const selection = createTabSelection({
+    getTabs: () => state.presentation.tabs,
+    getMatchingTabs: () => selectableTabs(allTabs(), state.workspace.groups, state.workspace.memberships, state.query.tabs),
+    getGroups: () => state.presentation.sections.filter((section) => section.kind === "group").map((section) => section.group),
+    getMemberships: () => state.workspace.memberships, getWindows: () => state.tree,
+    isAvailable: () => state.view === "tabs" && state.movingTabId === null,
+    isBusy, render, workspaceAction, refreshTree, setStatus, onError: showActionError,
+    onGroupAssigned: (id) => state.collapsedGroups.delete(id),
+    onEnter: () => { dragController?.cancel(); closeMenu(); state.renamingGroup = null; }
+});
 
-const elements = {
-    summary: document.getElementById("summary"),
-    refresh: document.getElementById("refresh"),
-    modeBar: document.getElementById("mode-bar"),
-    status: document.getElementById("status"),
-    tabList: document.getElementById("tab-list"),
-    openShortcut: document.getElementById("open-shortcut"),
-    openShortcutKeys: document.getElementById("open-shortcut-keys"),
-    openShortcutLabel: document.getElementById("open-shortcut-label")
-};
-
-function runtimeError() {
-    if (!chrome.runtime.lastError)
-        return null;
-    return new Error(chrome.runtime.lastError.message);
-}
-
-function assertElement(value, name) {
-    if (!(value instanceof HTMLElement))
-        throw new Error(`Ztab tab tree is missing ${name}`);
-    return value;
-}
-
-function getAllNormalWindowsWithTabs() {
-    return new Promise((resolve, reject) => {
-        chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }, (windows) => {
-            const error = runtimeError();
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolve(windows);
-        });
+function button(text, label, handler, className = "text-button", iconName = null) {
+    const control = node("button", className, text);
+    control.type = "button";
+    control.setAttribute("aria-label", label);
+    control.title = label;
+    control.disabled = isBusy();
+    if (iconName)
+        control.prepend(icon(iconName));
+    control.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (isBusy() || dragController?.suppressClick())
+            return;
+        Promise.resolve().then(() => handler(event)).catch(showActionError);
     });
+    return control;
 }
 
-function getPanelWindow() {
-    return new Promise((resolve) => {
-        chrome.windows.getCurrent({ populate: false }, (win) => {
-            if (runtimeError()) {
-                resolve(null);
-                return;
+function setStatus(message, actions = []) {
+    const version = ++noticeVersion;
+    elements.status.replaceChildren(node("span", "notice-copy", message));
+    elements.status.hidden = !message;
+    for (const action of actions) {
+        const control = button(action.label, action.label, async () => {
+            control.disabled = true;
+            try {
+                await action.run();
+                if (noticeVersion === version)
+                    setStatus("");
             }
-            resolve(win);
-        });
-    });
-}
-
-function updateWindow(windowId, updateInfo) {
-    return new Promise((resolve, reject) => {
-        chrome.windows.update(windowId, updateInfo, (win) => {
-            const error = runtimeError();
-            if (error) {
-                reject(error);
-                return;
+            catch (error) {
+                control.disabled = false;
+                throw error;
             }
-            resolve(win);
         });
-    });
-}
-
-function removeTab(tabId) {
-    return new Promise((resolve, reject) => {
-        chrome.tabs.remove(tabId, () => {
-            const error = runtimeError();
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolve();
-        });
-    });
-}
-
-function requestWindowMerge(sourceWindowId, targetWindowId) {
-    return new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({
-            type: MESSAGE_MERGE_WINDOWS,
-            sourceWindowId,
-            targetWindowId
-        }, (response) => {
-            const error = runtimeError() || (!response?.ok && new Error(response?.error || "Could not merge windows."));
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolve();
-        });
-    });
-}
-
-function tabIndexById(tabId) {
-    return state.tabs.findIndex((tab) => tab.id === tabId);
-}
-
-function movingTab() {
-    return state.tabs.find((tab) => tab.id === state.movingTabId) || null;
-}
-
-function setStatus(text) {
-    elements.status.textContent = text;
-}
-
-async function renderOpenShortcut() {
-    const commands = await getCommands();
-    const shortcut = commands.find((command) => command.name === "_execute_action")?.shortcut || "";
-    elements.openShortcutKeys.replaceChildren();
-
-    if (!shortcut) {
-        elements.openShortcutLabel.textContent = "Panel shortcut not assigned";
-        return;
+        if (action.title)
+            control.title = action.title;
+        elements.status.append(control);
     }
-
-    const key = document.createElement("kbd");
-    key.textContent = formatShortcut(shortcut);
-    elements.openShortcutKeys.append(key);
-    elements.openShortcutLabel.textContent = "Open panel";
+    if (message)
+        elements.status.append(button("", "Dismiss message", () => setStatus(""), "icon-button", "close"));
 }
 
-function refreshOpenShortcut() {
-    return renderOpenShortcut().catch(() => {
-        elements.openShortcutKeys.replaceChildren();
-        elements.openShortcutLabel.textContent = "Panel shortcut unavailable";
-    });
-}
-
-function focusTabList() {
-    elements.tabList.focus({ preventScroll: true });
-}
-
-function updateSelectedTabDom(options = {}) {
-    const rows = elements.tabList.querySelectorAll(".tab-row");
-    let activeDescendantId = "";
-    for (const row of rows) {
-        const selected = Number(row.dataset.tabId) === state.selectedTabId;
-        row.classList.toggle("selected", selected);
-        row.setAttribute("aria-selected", selected ? "true" : "false");
-        if (selected)
-            activeDescendantId = row.id;
-        if (selected && options.scroll) {
-            row.scrollIntoView({ block: "nearest" });
-        }
-    }
-    if (activeDescendantId) {
-        elements.tabList.setAttribute("aria-activedescendant", activeDescendantId);
-    }
-    else {
-        elements.tabList.removeAttribute("aria-activedescendant");
-    }
-}
-
-function setSelectedTabId(tabId, options = {}) {
-    if (!state.tabs.some((tab) => tab.id === tabId))
-        return;
-    state.selectedTabId = tabId;
-    updateSelectedTabDom(options);
-    if (options.focusList)
-        focusTabList();
-}
-
-function updateSelectedTargetDom(options = {}) {
-    const rows = elements.tabList.querySelectorAll(".target-row");
-    rows.forEach((row, index) => {
-        const selected = index === state.selectedTargetIndex;
-        row.classList.toggle("selected", selected);
-        row.setAttribute("aria-selected", selected ? "true" : "false");
-        if (selected && options.scroll) {
-            row.scrollIntoView({ block: "nearest" });
-        }
-    });
-}
-
-function setSelectedTargetIndex(index, options = {}) {
-    const tab = movingTab();
-    const targets = tab ? getMoveTargets(state.tree, tab.windowId) : [];
-    if (targets.length === 0)
-        return;
-    state.selectedTargetIndex = Math.max(0, Math.min(index, targets.length - 1));
-    updateSelectedTargetDom(options);
-    if (options.focusList)
-        focusTabList();
+function showActionError(error) {
+    setStatus(error?.message || "The action could not be completed. Try again.");
 }
 
 function hostFromUrl(url) {
-    try {
-        return new URL(url).host;
+    try { return new URL(url).host.replace(/^www\./, "") || url; }
+    catch { return url || "No URL"; }
+}
+
+function canSave(tab) {
+    try { savedUrl(tab?.url); return true; }
+    catch { return false; }
+}
+
+function matchesTab(tab, query) {
+    return `${tab.title} ${tab.url}`.toLowerCase().includes(query);
+}
+
+function tabIcon(tab) {
+    const placeholder = () => node("span", "tab-placeholder", (tab.title || "?").trim().charAt(0).toUpperCase());
+    let source = tab.favIconUrl;
+    if (!source && canSave(tab)) {
+        // Saved pages only store their URL. Chrome can resolve their icons even
+        // after the original tab closes, without migrating existing entries.
+        const cached = new URL(chrome.runtime.getURL("/_favicon/"));
+        cached.searchParams.set("pageUrl", tab.url);
+        cached.searchParams.set("size", "32");
+        source = cached.href;
     }
-    catch {
-        return url || "No URL";
+    if (!source)
+        return placeholder();
+    const image = node("img", "tab-icon");
+    image.alt = "";
+    image.draggable = false;
+    image.src = source;
+    image.addEventListener("error", () => image.replaceWith(placeholder()), { once: true });
+    return image;
+}
+
+function rowCopy(title, meta) {
+    const copy = node("span", "tab-copy");
+    copy.append(node("span", "tab-title", title), node("span", "tab-meta", meta));
+    return copy;
+}
+
+function selectable(control, id, row) {
+    control.dataset.selectId = id;
+    control.dataset.focusKey = id;
+    row.dataset.rowId = id;
+    row.classList.toggle("selected", state.selectedId === id);
+    control.addEventListener("focus", () => selectRow(id));
+    return control;
+}
+
+function selectRow(id, scroll = false) {
+    state.selectedId = id;
+    for (const row of elements["tab-list"].querySelectorAll("[data-row-id]")) {
+        row.classList.toggle("selected", row.dataset.rowId === id);
+        if (scroll && row.dataset.rowId === id)
+            row.scrollIntoView({ block: "nearest" });
     }
 }
 
-function tabMetaText(tab) {
-    const host = hostFromUrl(tab.url);
-    const parts = tab.pinned ? [tab.windowLabel || "Window", host] : [host];
-    if (tab.audible)
-        parts.push(tab.muted ? "Muted" : "Audio");
-    return parts.join(" · ");
-}
-
-function placeholderForTab(tab) {
-    const node = document.createElement("span");
-    node.className = "tab-placeholder";
-    node.textContent = (tab.title || tab.url || "?").trim().charAt(0).toUpperCase() || "?";
-    return node;
-}
-
-function iconForTab(tab) {
-    if (!tab.favIconUrl)
-        return placeholderForTab(tab);
-    const img = document.createElement("img");
-    img.className = "tab-icon";
-    img.alt = "";
-    img.src = tab.favIconUrl;
-    img.addEventListener("error", () => {
-        img.replaceWith(placeholderForTab(tab));
-    }, { once: true });
-    return img;
-}
-
-function badge(text, className = "") {
-    const node = document.createElement("span");
-    node.className = `badge ${className}`.trim();
-    node.textContent = text;
-    return node;
-}
-
-function actionButton(text, label, className, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `tab-action ${className}`;
-    button.textContent = text;
-    button.disabled = state.mergingWindowId !== null;
-    button.setAttribute("aria-label", label);
-    button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onClick();
-    });
-    button.addEventListener("dblclick", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-    });
-    return button;
-}
-
-function renderTabRow(tab) {
-    const row = document.createElement("div");
-    row.className = [
-        "tab-row",
-        tab.pinned ? "pinned-row" : "",
-        tab.id === state.activeTabId ? "active-row" : "",
-        tab.id === state.selectedTabId ? "selected" : ""
-    ].filter(Boolean).join(" ");
-    row.id = `tab-${tab.id}`;
+function renderTabRow(tab, inGroup = false) {
+    const active = tab.id === (inGroup ? state.focusedTabId : state.activeTabId);
+    const row = node("div", `tab-row${tab.pinned ? " pinned-row" : ""}${active ? " active-row" : ""}`);
+    row.setAttribute("role", "listitem");
     row.dataset.tabId = String(tab.id);
-    row.setAttribute("role", "option");
-    row.setAttribute("tabindex", "-1");
-    row.setAttribute("aria-selected", tab.id === state.selectedTabId ? "true" : "false");
-    if (tab.id === state.activeTabId)
-        row.setAttribute("aria-current", "page");
-
-    const copy = document.createElement("span");
-    copy.className = "tab-copy";
-
-    const title = document.createElement("span");
-    title.className = "tab-title";
-    title.textContent = tab.title;
-
-    const url = document.createElement("span");
-    url.className = "tab-url";
-    url.textContent = tabMetaText(tab);
-
-    copy.append(title, url);
+    row.dataset.windowId = String(tab.windowId);
+    const group = groupById(state.workspace.memberships[tab.id]);
+    row.dataset.groupId = group?.id || "";
+    const meta = [hostFromUrl(tab.url), inGroup || tab.pinned ? tab.windowLocation : "",
+        tab.audible ? (tab.muted ? "Muted" : "Audio") : ""].filter(Boolean).join(" · ");
+    const open = button("", `${selection.active() ? "Select" : "Open"} ${tab.title}`, (event) => {
+        if (tab.pinned && (event.metaKey || event.ctrlKey || event.shiftKey)) return;
+        if (!selection.selectTab(tab, event)) return activateTab(tab.id);
+    }, "open-row");
+    if (selection.active()) {
+        open.disabled = tab.pinned || isBusy();
+        if (!tab.pinned) {
+            open.setAttribute("aria-pressed", String(selection.has(tab.id)));
+            row.classList.toggle("bulk-selected", selection.has(tab.id));
+            row.append(selection.checkbox([tab], `Select ${tab.title}`, `select-tab-${tab.id}`, tab));
+            row.addEventListener("click", (event) => {
+                if (!event.target.closest("button, input")) selection.selectTab(tab, event);
+            });
+        }
+    }
+    open.title = `${tab.title}\n${tab.url}\n${tab.windowLocation}`;
+    open.draggable = false;
+    if (!tab.pinned && !selection.active() && !state.query.tabs.trim() && !isBusy())
+        open.dataset.dragTabId = String(tab.id);
+    if (active)
+        open.setAttribute("aria-current", "page");
+    open.append(tabIcon(tab), rowCopy(tab.title, meta));
+    row.append(selectable(open, `tab-${tab.id}`, row));
+    if (selection.active()) return row;
+    const more = button("", `More actions for ${tab.title}`, () => tabMenu(more, tab), "icon-button", "more");
+    more.setAttribute("aria-haspopup", "menu");
+    more.dataset.focusKey = `more-tab-${tab.id}`;
+    row.append(more);
     if (!tab.pinned) {
-        const actions = document.createElement("span");
-        actions.className = "tab-actions";
-        actions.append(
-            actionButton("Move", `Move ${tab.title}`, "move-action", () => {
-                setSelectedTabId(tab.id);
-                startMove(tab.id);
-            }),
-            actionButton("Close", `Close ${tab.title}`, "close-action", () => {
-                setSelectedTabId(tab.id);
-                closeTab(tab.id).catch(showActionError);
-            })
-        );
-        row.append(iconForTab(tab), copy, actions);
+        const close = button("", `Close ${tab.title}`, () => closeTab(tab.id), "icon-button close-action", "close");
+        close.dataset.focusKey = `close-tab-${tab.id}`;
+        row.append(close);
     }
-    else {
-        row.append(iconForTab(tab), copy);
-    }
-
-    row.addEventListener("mouseenter", () => {
-        setSelectedTabId(tab.id);
-    });
-    row.addEventListener("click", () => {
-        setSelectedTabId(tab.id, { focusList: true });
-    });
-    row.addEventListener("dblclick", () => {
-        setSelectedTabId(tab.id);
-        activateTab(tab.id).catch(showActionError);
-    });
-
     return row;
 }
 
-function renderWindowHeading(labelText, countValue, countLabel, variant, win = null) {
-    const heading = document.createElement("div");
-    heading.className = `window-heading ${variant}`;
+function tabMenu(anchor, tab) {
+    const group = groupById(state.workspace.memberships[tab.id]);
+    const saved = state.workspace.saved.some((item) => item.url === tab.url);
+    const items = [
+        { label: saved ? "Edit saved page…" : "Save page", disabled: !canSave(tab), run: () => saveTab(tab.id) }
+    ];
+    if (!tab.pinned)
+        items.push({ label: group ? "Move to group…" : "Add to group…", run: () => assignGroupDialog(tab) });
+    if (group)
+        items.push({ label: `Remove from ${group.name}`, run: () => workspaceAction({ action: "assign-tab", tabId: tab.id, groupId: null, expectedGroupId: group.id }) });
+    items.push({ label: tab.pinned ? "Unpin tab" : "Pin tab", run: () => updateTab(tab.id, { pinned: !tab.pinned }) });
+    if (!tab.pinned)
+        items.push({ label: "Move to window…", run: () => { state.movingTabId = tab.id; render(); elements["tab-list"].focus(); } });
+    openMenu(anchor, items, showActionError);
+}
 
-    const label = document.createElement("span");
-    label.className = "window-label";
-    label.textContent = labelText;
+function empty(title, description, iconName) {
+    const wrapper = node("div", "empty");
+    const mark = node("span", "empty-icon");
+    mark.append(icon(iconName));
+    wrapper.append(mark, node("strong", "", title), node("p", "", description));
+    return wrapper;
+}
 
-    const count = document.createElement("span");
-    count.className = "window-count";
-    count.textContent = `${countValue} ${countValue === 1 ? countLabel : `${countLabel}s`}`;
-
-    const actions = document.createElement("span");
-    actions.className = "window-heading-actions";
-    actions.append(count);
-    if (win && !win.isCurrentWindow && state.currentWindowId !== null) {
-        const current = state.tree.find((item) => item.isCurrentWindow);
-        const mergeLabel = `Merge all tabs from ${win.label} into Current window`;
-        const merge = actionButton(
-            state.mergingWindowId === win.id ? "Merging…" : "Merge here",
-            mergeLabel,
-            "merge-action",
-            () => mergeWindow(win.id).catch(showActionError)
-        );
-        const canMerge = win.mergeEligible && current?.mergeEligible && win.incognito === current.incognito;
-        merge.disabled = !canMerge || state.mergingWindowId !== null;
-        merge.title = canMerge ? mergeLabel : "Merge is available between regular windows of the same browsing mode. Expand compact windows to merge them.";
-        actions.append(merge);
+function windowHeading(win, tabs) {
+    const heading = node("div", `window-heading ${win.isCurrentWindow ? "current-heading" : "other-heading"}`);
+    const left = node("span", "heading-left");
+    const title = node("span", "window-title");
+    if (selection.active()) left.append(selection.checkbox(tabs, `Select tabs in ${win.label}`, `select-window-${win.id}`));
+    title.append(node("span", "", win.label), node("span", "count", String(tabs.length)));
+    left.append(title);
+    if (win.displayName) {
+        const display = node("span", "window-display");
+        display.title = win.displayName;
+        display.append(node("span", "display-name", win.displayName));
+        left.append(display);
     }
-    heading.append(label, actions);
+    heading.append(left);
+    if (!selection.active() && !win.isCurrentWindow && state.currentWindowId !== null) {
+        const current = state.tree.find((item) => item.isCurrentWindow);
+        const label = `Merge all tabs from ${win.label} into Current window`;
+        const merge = button(state.mergingWindowId === win.id ? "Merging…" : "Merge here", label, () => mergeWindow(win.id), "text-button merge-action");
+        const allowed = win.mergeEligible && current?.mergeEligible && win.incognito === current.incognito;
+        merge.disabled = !allowed || isBusy();
+        merge.title = allowed ? label : "Merge is available between regular windows of the same browsing mode. Expand compact windows to merge them.";
+        merge.dataset.focusKey = `merge-${win.id}`;
+        heading.append(merge);
+    }
     return heading;
 }
 
-function renderTargetRow(target, index) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = `target-row${index === state.selectedTargetIndex ? " selected" : ""}`;
-    row.setAttribute("aria-selected", index === state.selectedTargetIndex ? "true" : "false");
-
-    const copy = document.createElement("span");
-    copy.className = "target-copy";
-
-    const title = document.createElement("span");
-    title.className = "target-title";
-    title.textContent = target.isCurrentWindow ? "Current window" : target.label;
-
-    const meta = document.createElement("span");
-    meta.className = "target-meta";
-    meta.textContent = `${target.tabCount} ${target.tabCount === 1 ? "tab" : "tabs"}`;
-
-    copy.append(title, meta);
-    row.append(copy, badge("MOVE HERE", "current"));
-    row.addEventListener("mouseenter", () => {
-        setSelectedTargetIndex(index);
-    });
-    row.addEventListener("click", () => {
-        setSelectedTargetIndex(index, { focusList: true });
-        confirmMove().catch(showActionError);
-    });
-
-    return row;
-}
-
-function renderBrowseList() {
+function renderTabs() {
     const fragment = document.createDocumentFragment();
-    if (state.tree.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "No normal Chrome windows found.";
-        fragment.append(empty);
-        return fragment;
+    const query = state.query.tabs.trim().toLowerCase();
+    const pinned = getPinnedTabs(state.tree).filter((tab) => matchesTab(tab, query));
+    let matches = 0;
+    if (state.showPinnedTabs && pinned.length) {
+        const expanded = state.pinnedExpanded || Boolean(query);
+        const heading = node("div", "window-heading pinned-heading");
+        const toggle = button("Pinned tabs", "Toggle pinned tabs", () => { state.pinnedExpanded = !state.pinnedExpanded; render(); }, "heading-toggle", "chevron");
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.dataset.focusKey = "pinned-toggle";
+        toggle.append(node("span", "count", String(pinned.length)));
+        heading.append(toggle);
+        fragment.append(heading);
+        if (expanded)
+            pinned.forEach((tab) => fragment.append(renderTabRow(tab)));
+        matches += pinned.length;
     }
-
-    const pinnedTabs = getPinnedTabs(state.tree);
-    if (state.showPinnedTabs && pinnedTabs.length > 0) {
-        fragment.append(renderWindowHeading("Pinned tabs", pinnedTabs.length, "tab", "pinned-heading"));
-        for (const tab of pinnedTabs) {
-            fragment.append(renderTabRow(tab));
+    for (const section of state.presentation.sections) {
+        if (section.kind === "group") {
+            const grouped = renderGroups(query, [section.group]);
+            fragment.append(grouped.fragment);
+            matches += grouped.matches;
+            continue;
         }
+        const win = section.win;
+        const tabs = section.tabs.filter((tab) => matchesTab(tab, query));
+        if (query && !tabs.length)
+            continue;
+        // A window with all tabs grouped or hidden still needs its merge action.
+        if (!tabs.length && (win.isCurrentWindow || selection.active()))
+            continue;
+        fragment.append(windowHeading(win, tabs));
+        tabs.forEach((tab) => fragment.append(renderTabRow(tab)));
+        matches += tabs.length;
     }
-
-    for (const win of getUnpinnedTabTree(state.tree)) {
-        const variant = win.isCurrentWindow ? "current-heading" : "other-heading";
-        fragment.append(renderWindowHeading(win.label, win.tabs.length, "tab", variant, win));
-
-        for (const tab of win.tabs) {
-            fragment.append(renderTabRow(tab));
-        }
-    }
-
+    if (!state.tree.length)
+        fragment.append(empty("No open windows", "Open a regular Chrome window to see your tabs.", "tabs"));
+    else if (query && !matches)
+        fragment.append(empty("No matching tabs", "Try a page title or website address.", "search"));
     return fragment;
 }
 
-function renderMoveList() {
+function renderGroups(query, groups) {
     const fragment = document.createDocumentFragment();
-    const tab = movingTab();
-    const targets = tab ? getMoveTargets(state.tree, tab.windowId) : [];
-
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.className = "cancel-move-button";
-    cancel.textContent = "Back to tabs";
-    cancel.addEventListener("click", () => {
-        cancelMove();
-    });
-    fragment.append(cancel);
-
-    if (!tab || targets.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "Open another normal Chrome window to move this tab.";
-        fragment.append(empty);
-        return fragment;
+    let count = 0;
+    for (const group of groups) {
+        const members = membersOf(group.id);
+        const nameMatches = group.name.toLowerCase().includes(query);
+        const matches = nameMatches ? members : members.filter((tab) => matchesTab(tab, query));
+        if (query && !nameMatches && !matches.length)
+            continue;
+        count += Math.max(matches.length, 1);
+        const active = members.some((tab) => tab.id === state.focusedTabId);
+        const card = node("div", `group-card color-${group.color}${active ? " group-active" : ""}`);
+        card.setAttribute("role", "listitem");
+        const expanded = !state.collapsedGroups.has(group.id) || Boolean(query);
+        const heading = node("div", "group-header");
+        heading.dataset.dropGroupId = group.id;
+        const toggleGroup = () => {
+            if (expanded) state.collapsedGroups.add(group.id);
+            else state.collapsedGroups.delete(group.id);
+            render();
+        };
+        const toggle = button("", `${expanded ? "Collapse" : "Expand"} ${group.name}`, toggleGroup, "icon-button group-toggle", "chevron");
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.setAttribute("aria-controls", `members-${group.id}`);
+        toggle.dataset.focusKey = `toggle-${group.id}`;
+        const windows = new Set(members.map((tab) => tab.windowId)).size;
+        const jump = button("", `${expanded ? "Collapse" : "Expand"} group ${group.name}`, toggleGroup, "group-switch");
+        jump.setAttribute("aria-expanded", String(expanded));
+        jump.setAttribute("aria-controls", `members-${group.id}`);
+        jump.append(node("span", "group-name", group.name), node("span", "count", String(members.length)));
+        const more = button("", `Actions for ${group.name}`, () => openMenu(more, [
+            { label: "Switch to last active tab", disabled: !members.length, run: () => workspaceAction({ action: "activate-group", id: group.id }) },
+            { label: "Rename group", run: () => startGroupRename(group) },
+            { label: "Edit group…", run: () => groupDialog(group) },
+            { label: "Ungroup tabs", run: () => removeGroup(group) }
+        ], showActionError), "icon-button", "more");
+        more.setAttribute("aria-haspopup", "menu");
+        more.dataset.focusKey = `more-${group.id}`;
+        if (selection.active()) heading.append(selection.checkbox(matches, `Select tabs in ${group.name}`, `select-group-${group.id}`));
+        heading.append(toggle);
+        if (state.renamingGroup?.id === group.id) {
+            const draft = state.renamingGroup;
+            const input = textInput(draft.name);
+            input.className = "group-name-input";
+            input.setAttribute("aria-label", "Group name");
+            input.dataset.focusKey = `rename-${group.id}`;
+            input.disabled = isBusy();
+            input.addEventListener("input", () => { draft.name = input.value; });
+            input.addEventListener("keydown", (event) => {
+                if (!["Enter", "Escape"].includes(event.key)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.key === "Enter") finishGroupRename().catch(showActionError);
+                else { state.renamingGroup = null; render(); }
+            });
+            heading.append(input, button("Save", "Save group name", finishGroupRename));
+        }
+        else {
+            heading.append(selectable(jump, `group-${group.id}`, heading), node("span", "group-windows", counted(windows, "window")));
+            if (!selection.active()) heading.append(more);
+        }
+        card.append(heading);
+        const list = node("div", "group-items");
+        list.id = `members-${group.id}`;
+        list.setAttribute("role", "list");
+        list.hidden = !expanded;
+        matches.forEach((tab) => list.append(renderTabRow(tab, true)));
+        if (!members.length)
+            list.append(node("p", "group-empty", "No open tabs. Use Edit group to add some."));
+        card.append(list);
+        fragment.append(card);
     }
+    return { fragment, matches: count };
+}
 
-    state.selectedTargetIndex = Math.max(0, Math.min(state.selectedTargetIndex, targets.length - 1));
-    for (let index = 0; index < targets.length; index += 1) {
-        fragment.append(renderTargetRow(targets[index], index));
+function startGroupRename(group) {
+    state.renamingGroup = { id: group.id, revision: group.revision, name: group.name };
+    render();
+    const input = elements["tab-list"].querySelector(".group-name-input");
+    input?.focus();
+    input?.select();
+}
+
+async function finishGroupRename() {
+    const draft = state.renamingGroup;
+    if (!draft || isBusy()) return;
+    await workspaceAction({ action: "rename-group", id: draft.id, name: draft.name, expectedRevision: draft.revision });
+    state.renamingGroup = null;
+    render();
+    elements["tab-list"].focus({ preventScroll: true });
+}
+
+async function dropTab(source, target) {
+    let operation;
+    if (target.tabId !== undefined) {
+        operation = { action: "drop-tab", tabId: source.id, targetTabId: target.tabId,
+            placement: target.mode === "before" || target.mode === "after" ? target.mode : "group",
+            expectedGroupId: source.groupId, expectedTargetGroupId: target.groupId };
+    }
+    else {
+        operation = { action: "assign-tab", tabId: source.id, groupId: target.mode === "ungroup" ? null : target.groupId,
+            expectedGroupId: source.groupId };
+    }
+    const response = await workspaceAction(operation);
+    state.selectedId = `tab-${source.id}`;
+    const groupId = state.workspace.memberships[source.id];
+    if (groupId) state.collapsedGroups.delete(groupId);
+    render();
+    selectRow(state.selectedId, true);
+    if (response.created) startGroupRename(response.group);
+    else elements["tab-list"].focus({ preventScroll: true });
+    elements["drag-announcement"].textContent = response.created ? "Group created. Enter a name."
+        : target.mode === "ungroup" ? "Tab removed from group." : target.mode === "join" ? "Tab added to group." : "Tab order updated.";
+}
+
+function collectionName(id) {
+    return state.workspace.collections.find((item) => item.id === id)?.name || "Unsorted";
+}
+
+function renderSaved() {
+    const fragment = document.createDocumentFragment();
+    const query = state.query.saved.trim().toLowerCase();
+    const saved = state.workspace.saved.filter((item) => (state.collection === "all" || (item.collectionId || "unsorted") === state.collection) && matchesTab(item, query));
+    if (!saved.length) {
+        const filtered = query || state.collection !== "all";
+        fragment.append(empty(filtered ? "No saved pages here" : "A place for pages worth keeping", filtered ? "Try another collection or save a page to this one." : "Save a tab from its ··· menu, or save your current tab above.", "saved"));
+    }
+    if (saved.length)
+        fragment.append(node("div", "section-label", `${saved.length} ${saved.length === 1 ? "page" : "pages"}`));
+    for (const item of saved) {
+        const row = node("div", "tab-row saved-row");
+        row.setAttribute("role", "listitem");
+        const open = button("", `Open ${item.title}`, () => workspaceAction({ action: "open-saved", id: item.id }), "open-row");
+        open.title = `${item.title}\n${item.url}\nSaved ${new Date(item.createdAt).toLocaleDateString()}`;
+        open.append(tabIcon(item), rowCopy(item.title, `${hostFromUrl(item.url)} · ${collectionName(item.collectionId)}`));
+        const more = button("", `Actions for ${item.title}`, () => openMenu(more, [
+            { label: "Edit saved page…", run: () => savedDialog(item) },
+            { label: "Remove from Saved", run: () => removeSaved(item), danger: true }
+        ], showActionError), "icon-button", "more");
+        more.setAttribute("aria-haspopup", "menu");
+        more.dataset.focusKey = `more-saved-${item.id}`;
+        row.append(selectable(open, `saved-${item.id}`, row), more);
+        fragment.append(row);
+    }
+    return fragment;
+}
+
+function renderMove() {
+    const fragment = document.createDocumentFragment();
+    const tab = tabById(state.movingTabId);
+    fragment.append(button("← Back", "Cancel move", () => { state.movingTabId = null; render(); }, "cancel-move-button"));
+    const targets = tab ? getMoveTargets(state.tree, tab.windowId) : [];
+    if (!targets.length)
+        fragment.append(empty("No other window", "Open another regular window to move this tab.", "tabs"));
+    for (const target of targets) {
+        const row = node("div", "target-row");
+        row.setAttribute("role", "listitem");
+        const location = [target.label, target.displayName].filter(Boolean).join(" · ");
+        const move = button("", `Move to ${location}`, () => confirmMove(target.id), "open-row");
+        move.append(rowCopy(target.label, [target.displayName, counted(target.tabCount, "tab")].filter(Boolean).join(" · ")), node("span", "move-label", "Move here"));
+        row.append(selectable(move, `target-${target.id}`, row));
+        fragment.append(row);
     }
     return fragment;
 }
 
 function render() {
-    elements.refresh.disabled = state.mergingWindowId !== null;
-    elements.tabList.setAttribute("aria-busy", state.mergingWindowId !== null ? "true" : "false");
-    const windowCount = state.tree.length;
-    const tabCount = flattenTabTreeTabs(state.tree).length;
-    const pinnedTabCount = getPinnedTabs(state.tree).length;
-    const hiddenPinnedSummary = !state.showPinnedTabs && pinnedTabCount > 0
-        ? ` · ${pinnedTabCount} pinned hidden`
-        : "";
-    elements.summary.textContent = `${tabCount} ${tabCount === 1 ? "tab" : "tabs"} · ${windowCount} ${windowCount === 1 ? "window" : "windows"}${hiddenPinnedSummary}`;
-
-    const tab = movingTab();
-    if (state.mode === MODE_MOVE && tab) {
-        elements.modeBar.hidden = false;
-        elements.modeBar.textContent = `Move "${tab.title}" to another window`;
+    const list = elements["tab-list"];
+    const focusKey = list.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
+    const scrollTop = list.scrollTop;
+    const workspace = state.workspace;
+    const interacting = selection.active() || isBusy() || dragController?.active() ||
+        state.renamingGroup || state.movingTabId !== null || document.querySelector("dialog[open], .menu:popover-open");
+    const inspecting = Boolean(state.query.tabs.trim()) || state.pointerInside || (document.hasFocus() && Boolean(focusKey));
+    const holdOrder = interacting || (state.sortMode === "recent" && inspecting && !state.sortNow);
+    state.presentation = buildTabPresentation(state.tree, workspace, state.sortMode, holdOrder ? state.presentation.snapshot : null);
+    selection.prune();
+    if (!holdOrder) state.sortNow = false;
+    const sortLabel = state.sortMode === "recent" ? "Recently used" : "Manual order";
+    elements["sort-tabs"].hidden = state.view !== "tabs" || state.movingTabId !== null;
+    elements["sort-tabs"].disabled = isBusy() || selection.active();
+    elements["sort-tabs"].setAttribute("aria-label", `Sort tabs: ${sortLabel}`);
+    elements["sort-tabs"].title = `Sort tabs: ${sortLabel}${state.sortMode === "recent" ? ". Choose Manual order to drag tabs into position." : ""}`;
+    document.getElementById("tabs-count").textContent = String(allTabs().length);
+    document.getElementById("saved-count").textContent = String(workspace.saved.length);
+    document.getElementById("private-label").hidden = !state.incognito;
+    document.getElementById("private-label").title = "Groups and Saved in incognito are cleared when all incognito windows close.";
+    for (const control of document.querySelectorAll("[data-view]")) {
+        const active = control.dataset.view === state.view;
+        control.setAttribute("aria-selected", String(active));
+        control.tabIndex = active ? 0 : -1;
+        control.disabled = isBusy();
     }
-    else {
-        elements.modeBar.hidden = true;
-        elements.modeBar.textContent = "";
-    }
-
-    elements.tabList.replaceChildren(state.mode === MODE_MOVE ? renderMoveList() : renderBrowseList());
-    if (state.mode === MODE_MOVE) {
-        updateSelectedTargetDom();
-    }
-    else {
-        updateSelectedTabDom();
-    }
+    elements["workspace-panel"].setAttribute("aria-labelledby", `nav-${state.view}`);
+    elements["saved-tools"].hidden = state.view !== "saved";
+    for (const id of ["refresh", "new-collection"])
+        elements[id].disabled = isBusy();
+    elements["save-current"].disabled = isBusy() || !canSave(tabById(state.activeTabId));
+    elements["save-current"].title = canSave(tabById(state.activeTabId)) ? "Save the active page in this window" : "Only HTTP and HTTPS pages can be saved";
+    const options = [["all", "All saved"], ["unsorted", "Unsorted"], ...workspace.collections.map((item) => [item.id, item.name])];
+    if (!options.some(([id]) => id === state.collection))
+        state.collection = "all";
+    elements.collection.replaceChildren(...selectInput(options, state.collection).children);
+    elements.collection.value = state.collection;
+    elements["mode-bar"].hidden = state.movingTabId === null;
+    elements["mode-bar"].textContent = state.movingTabId !== null ? `Move “${tabById(state.movingTabId)?.title || "Tab"}” to another window` : "";
+    elements.search.disabled = state.movingTabId !== null;
+    list.setAttribute("aria-busy", String(isBusy()));
+    list.setAttribute("aria-label", state.movingTabId !== null ? "Move destinations" : { tabs: "Open tabs and groups", saved: "Saved pages" }[state.view]);
+    list.replaceChildren(state.movingTabId !== null ? renderMove() : state.view === "saved" ? renderSaved() : renderTabs());
+    list.scrollTop = scrollTop;
+    if (focusKey)
+        [...list.querySelectorAll("[data-focus-key]")].find((control) => control.dataset.focusKey === focusKey)?.focus({ preventScroll: true });
+    const pinsHidden = !state.showPinnedTabs ? getPinnedTabs(state.tree).length : 0;
+    elements.summary.textContent = state.view === "saved" ? `${workspace.saved.length} saved · ${counted(workspace.collections.length, "collection")}`
+        : `${counted(allTabs().length, "tab")} · ${counted(state.tree.length, "window")}${pinsHidden ? ` · ${pinsHidden} pinned hidden` : ""}`;
+    selection.paint();
 }
 
-function scheduleRefresh() {
-    if (state.mergingWindowId !== null)
-        return;
-    if (refreshTimer)
-        clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => {
-        refreshTimer = null;
-        refreshTree({ keepSelection: true }).catch(showActionError);
-    }, AUTO_REFRESH_DELAY_MS);
+function switchView(view) {
+    if (isBusy()) return;
+    selection.reset();
+    dragController?.cancel();
+    closeMenu();
+    state.scroll[state.view] = elements["tab-list"].scrollTop;
+    state.view = view;
+    state.movingTabId = null;
+    state.renamingGroup = null;
+    elements.search.value = state.query[view];
+    elements.search.placeholder = `Search ${view}…`;
+    elements.search.setAttribute("aria-label", `Search ${view}`);
+    render();
+    elements["tab-list"].scrollTop = state.scroll[view];
 }
 
-function registerAutoRefreshHandlers() {
-    chrome.tabs.onCreated.addListener(scheduleRefresh);
-    chrome.tabs.onRemoved.addListener(scheduleRefresh);
-    chrome.tabs.onMoved.addListener(scheduleRefresh);
-    chrome.tabs.onAttached.addListener(scheduleRefresh);
-    chrome.tabs.onDetached.addListener(scheduleRefresh);
-    chrome.tabs.onActivated.addListener(scheduleRefresh);
-    chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
-        if (changeInfo.title !== undefined
-            || changeInfo.url !== undefined
-            || changeInfo.favIconUrl !== undefined
-            || changeInfo.pinned !== undefined
-            || changeInfo.audible !== undefined
-            || changeInfo.mutedInfo !== undefined
-            || changeInfo.status === "complete") {
-            scheduleRefresh();
-        }
-    });
-    chrome.windows.onCreated.addListener(scheduleRefresh);
-    chrome.windows.onRemoved.addListener(scheduleRefresh);
-    chrome.windows.onFocusChanged.addListener(scheduleRefresh);
-}
-
-function registerPreferenceChangeHandler() {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName !== "local" || !changes[STORAGE_SHOW_PINNED_TABS_KEY])
-            return;
-        state.showPinnedTabs = resolveShowPinnedTabs(changes[STORAGE_SHOW_PINNED_TABS_KEY].newValue);
-        refreshTree({ keepSelection: true }).catch(showActionError);
-    });
-}
-
-function showActionError(error) {
-    console.error(error);
-    setStatus(`Failed: ${error?.message || error || "unknown error"}`);
-}
-
-function activeTabIdInWindow(windows, windowId) {
-    const win = windows.find((item) => item.id === windowId);
-    const tab = win?.tabs?.find((item) => item.active && typeof item.id === "number");
-    return tab?.id || null;
-}
-
-async function getCurrentContext(windows) {
-    // "Here" always means the window hosting this panel, even when another
-    // window receives focus while Chrome moves tabs or the user switches apps.
-    const win = await getPanelWindow();
-    const currentWindowId = windows.some((item) => item.id === win?.id) ? win.id : null;
-    return {
-        currentWindowId,
-        activeTabId: activeTabIdInWindow(windows, currentWindowId)
-    };
-}
-
-async function refreshTree(options = {}) {
+async function refreshTree({ preferActive = false, sortNow = false, returnVersion = null } = {}) {
     const generation = ++refreshGeneration;
-    const fallbackIndex = Number.isInteger(options.fallbackIndex) ? options.fallbackIndex : 0;
-    const previousSelection = state.selectedTabId;
-    const windows = await getAllNormalWindowsWithTabs();
-    const context = await getCurrentContext(windows);
-    if (state.mergingWindowId !== null || generation !== refreshGeneration)
+    const [windows, host, displayInfo] = await Promise.all([getAllNormalWindowsWithTabs(), getPanelWindow(), displayReader.read()]);
+    if (!host)
+        throw new Error("Could not find this panel's window. Reopen Ztab to try again.");
+    const response = await sendMessage({ type: MESSAGE_WORKSPACE, windowId: host.id, operation: { action: "read" } });
+    if (generation !== refreshGeneration || isBusy() || dragController?.active())
         return;
-
-    state.currentWindowId = context.currentWindowId;
-    state.activeTabId = context.activeTabId;
-    state.tree = buildTabTreeModel(windows, context.currentWindowId);
-    state.tabs = flattenVisibleTabTreeTabs(state.tree, {
-        includePinnedTabs: state.showPinnedTabs
-    });
-
-    let nextTabId = options.preferActive ? context.activeTabId : previousSelection;
-    if (!state.tabs.some((tab) => tab.id === nextTabId)) {
-        const fallbackTab = state.tabs[Math.min(fallbackIndex, Math.max(0, state.tabs.length - 1))];
-        nextTabId = fallbackTab?.id || null;
-    }
-    state.selectedTabId = nextTabId;
-
-    if (state.mode === MODE_MOVE && !movingTab()) {
-        state.mode = MODE_BROWSE;
+    // The panel's host defines “Current window”, independently of focus changes.
+    const scoped = windows.filter((win) => (win.incognito === true) === (host.incognito === true));
+    state.currentWindowId = host.id;
+    state.incognito = host.incognito === true;
+    state.tree = buildTabTreeModel(scoped, host.id, displayInfo.displays);
+    state.workspace = response.workspace;
+    state.sortNow ||= sortNow || (returnVersion !== null && returnVersion === interactionVersion && !state.query.tabs.trim());
+    state.activeTabId = allTabs().find((tab) => tab.windowId === host.id && tab.active)?.id ?? null;
+    state.focusedTabId = (scoped.find((win) => win.focused) || scoped.find((win) => win.id === host.id))?.tabs?.find((tab) => tab.active)?.id ?? null;
+    if (preferActive)
+        state.selectedId = `tab-${state.activeTabId}`;
+    if (state.movingTabId !== null && !tabById(state.movingTabId))
         state.movingTabId = null;
-    }
-
     render();
 }
 
-async function activateTab(tabId) {
-    if (state.mergingWindowId !== null)
+function scheduleRefresh() {
+    if (isBusy() || dragController?.active())
         return;
-    const tab = state.tabs.find((item) => item.id === tabId);
-    if (!tab)
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => refreshTree().catch(showActionError), 150);
+}
+
+async function workspaceAction(operation) {
+    if (isBusy())
+        throw new Error("Wait for the current action to finish.");
+    state.busy = true;
+    refreshGeneration += 1;
+    render();
+    try {
+        const response = await sendMessage({ type: MESSAGE_WORKSPACE, windowId: state.currentWindowId, operation });
+        state.workspace = response.workspace;
+        return response;
+    }
+    finally {
+        state.busy = false;
+        render();
+        scheduleRefresh();
+    }
+}
+
+async function activateTab(tabId) {
+    const tab = tabById(tabId);
+    if (!tab || isBusy())
         return;
     await updateTab(tab.id, { active: true });
     await updateWindow(tab.windowId, { focused: true });
 }
 
-function handleTabListKeydown(event) {
-    if (state.mode !== MODE_BROWSE || event.target !== elements.tabList)
-        return;
-
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-        const offset = event.key === "ArrowUp" ? -1 : 1;
-        const nextTabId = getAdjacentTabId(state.tabs, state.selectedTabId, offset);
-        if (nextTabId !== null)
-            setSelectedTabId(nextTabId, { scroll: true });
-        return;
-    }
-
-    if (event.key === "Enter" && state.selectedTabId !== null) {
-        event.preventDefault();
-        activateTab(state.selectedTabId).catch(showActionError);
-    }
-}
-
 async function closeTab(tabId) {
-    if (state.mergingWindowId !== null)
+    const tab = tabById(tabId);
+    if (!tab || tab.pinned || isBusy())
         return;
-    const tab = state.tabs.find((item) => item.id === tabId);
-    if (!tab)
-        return;
-    const oldIndex = tabIndexById(tab.id);
-    await removeTab(tab.id);
-    await refreshTree({ fallbackIndex: oldIndex });
-    setStatus("Closed tab.");
-}
-
-function startMove(tabId) {
-    if (state.mergingWindowId !== null)
-        return;
-    const tab = state.tabs.find((item) => item.id === tabId);
-    if (!tab) {
-        setStatus("No tab selected.");
-        return;
-    }
-    state.mode = MODE_MOVE;
-    state.movingTabId = tab.id;
-    state.selectedTargetIndex = 0;
+    const selected = visibleListControls().map((control) => control.dataset.selectId);
+    const index = selected.indexOf(`tab-${tab.id}`);
+    state.busy = true;
+    refreshGeneration += 1;
     setStatus("");
     render();
-}
-
-function cancelMove() {
-    state.mode = MODE_BROWSE;
-    state.movingTabId = null;
-    state.selectedTargetIndex = 0;
-    setStatus("");
-    render();
-}
-
-async function confirmMove() {
-    const tab = movingTab();
-    if (!tab)
-        return;
-    const targets = getMoveTargets(state.tree, tab.windowId);
-    const target = targets[state.selectedTargetIndex];
-    if (!target) {
-        setStatus("Open another normal Chrome window to move this tab.");
-        return;
+    try { await removeTabs([tab.id]); }
+    finally {
+        state.busy = false;
+        render();
+        await refreshTree();
     }
+    const remaining = visibleListControls();
+    selectRow(remaining[Math.min(index, remaining.length - 1)]?.dataset.selectId || null);
+    elements["tab-list"].focus({ preventScroll: true });
+}
 
-    await moveTabs(tab.id, { windowId: target.id, index: -1 });
-    await updateTab(tab.id, { active: true });
-    await updateWindow(target.id, { focused: true });
-
-    state.mode = MODE_BROWSE;
-    state.movingTabId = null;
-    state.selectedTabId = tab.id;
-    await refreshTree({ keepSelection: true });
-    setStatus("Moved tab.");
+async function confirmMove(targetId) {
+    const tab = tabById(state.movingTabId);
+    if (!tab || isBusy())
+        return;
+    state.busy = true;
+    render();
+    try {
+        const live = await getTab(tab.id);
+        if (!live || live.pinned)
+            throw new Error("This tab closed or became pinned. Choose another tab to move.");
+        await moveTabs(tab.id, { windowId: targetId, index: -1 });
+        await updateTab(tab.id, { active: true });
+        await updateWindow(targetId, { focused: true });
+        state.movingTabId = null;
+        setStatus("Tab moved");
+    }
+    finally {
+        state.busy = false;
+        render();
+        await refreshTree();
+    }
 }
 
 async function mergeWindow(sourceWindowId) {
-    if (state.mergingWindowId !== null || state.currentWindowId === null)
+    if (isBusy() || state.currentWindowId === null)
         return;
-    const targetWindowId = state.currentWindowId;
     state.mergingWindowId = sourceWindowId;
     refreshGeneration += 1;
-    if (refreshTimer) {
-        clearTimeout(refreshTimer);
-        refreshTimer = null;
-    }
+    clearTimeout(refreshTimer);
+    closeMenu();
     setStatus("");
     render();
     try {
-        await requestWindowMerge(sourceWindowId, targetWindowId);
+        await sendMessage({ type: MESSAGE_MERGE_WINDOWS, sourceWindowId, targetWindowId: state.currentWindowId });
     }
     finally {
         state.mergingWindowId = null;
         render();
-        await refreshTree({ keepSelection: true });
-        focusTabList();
+        await refreshTree();
+        elements["tab-list"].focus({ preventScroll: true });
     }
 }
 
-async function init() {
-    elements.summary = assertElement(elements.summary, "summary");
-    elements.refresh = assertElement(elements.refresh, "refresh button");
-    elements.modeBar = assertElement(elements.modeBar, "mode bar");
-    elements.status = assertElement(elements.status, "status");
-    elements.tabList = assertElement(elements.tabList, "tab list");
-    elements.openShortcut = assertElement(elements.openShortcut, "shortcut settings button");
-    elements.openShortcutKeys = assertElement(elements.openShortcutKeys, "open shortcut keys");
-    elements.openShortcutLabel = assertElement(elements.openShortcutLabel, "open shortcut label");
-
-    const storedPreferences = await storageGet([STORAGE_SHOW_PINNED_TABS_KEY]);
-    state.showPinnedTabs = resolveShowPinnedTabs(storedPreferences[STORAGE_SHOW_PINNED_TABS_KEY]);
-
-    elements.refresh.addEventListener("click", () => {
-        refreshTree({ keepSelection: true }).catch(showActionError);
-    });
-    elements.openShortcut.addEventListener("click", () => {
-        openShortcutSettings().catch(showActionError);
-    });
-    // Chrome has no command-change event; refresh the assignment when the user returns from settings.
-    window.addEventListener("focus", refreshOpenShortcut);
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible")
-            refreshOpenShortcut();
-    });
-    elements.tabList.addEventListener("keydown", handleTabListKeydown);
-    registerAutoRefreshHandlers();
-    registerPreferenceChangeHandler();
-
-    await Promise.all([
-        refreshTree({ preferActive: true }),
-        refreshOpenShortcut()
+async function saveTab(tabId) {
+    const response = await workspaceAction({ action: "save-tab", tabId });
+    if (response.duplicate) {
+        savedDialog(response.item);
+        return;
+    }
+    setStatus("Saved to Unsorted", [
+        { label: "Move", run: () => savedDialog(state.workspace.saved.find((item) => item.id === response.item.id) || response.item) },
+        { label: "Undo", run: () => workspaceAction({ action: "remove-saved", id: response.item.id, expectedRevision: response.item.revision }) }
     ]);
-    focusTabList();
+}
+
+function savedDialog(item) {
+    const body = node("div");
+    const title = textInput(item.title, { maxLength: 500 });
+    const url = textInput(item.url, { type: "url", maxLength: 20000 });
+    const collection = selectInput([["", "Unsorted"], ...state.workspace.collections.map((entry) => [entry.id, entry.name])], item.collectionId || "");
+    body.append(field("Title", title), field("URL", url), field("Collection", collection));
+    openDialog({ title: "Edit saved page", body, onSubmit: async () => {
+        await workspaceAction({ action: "edit-saved", id: item.id, expectedRevision: item.revision, title: title.value, url: url.value, collectionId: collection.value });
+        setStatus("Saved page updated");
+    } });
+}
+
+function collectionDialog() {
+    const name = textInput("", { placeholder: "e.g. Reading" });
+    openDialog({ title: "New collection", body: field("Collection name", name), submitLabel: "Create collection", onSubmit: async () => {
+        const response = await workspaceAction({ action: "create-collection", name: name.value });
+        state.collection = response.collection.id;
+        render();
+    } });
+}
+
+async function removeSaved(item) {
+    const { removed } = await workspaceAction({ action: "remove-saved", id: item.id, expectedRevision: item.revision });
+    setStatus("Removed from Saved", [{ label: "Undo", run: () => workspaceAction({ action: "restore-saved", item: removed }) }]);
+}
+
+function groupDialog(group = null, preselected = []) {
+    const body = node("div");
+    const name = textInput(group?.name || "", { placeholder: "e.g. Design research" });
+    const color = selectInput(GROUP_COLORS.map((value) => [value, value.charAt(0).toUpperCase() + value.slice(1)]), group?.color || "purple");
+    const properties = node("div", "group-properties");
+    properties.append(field("Group name", name), field("Color", color));
+    body.append(properties);
+    const selected = new Set(group ? membersOf(group.id).map((tab) => tab.id) : preselected);
+    const tabs = allTabs().filter((tab) => !tab.pinned);
+    // Keep the editor's membership snapshot even while other panels refresh us.
+    const expectedMemberships = Object.fromEntries(tabs.map((tab) => [tab.id, state.workspace.memberships[tab.id] || null]));
+    const count = node("p", "dialog-help", `${selected.size} tabs selected · tabs stay in their windows`);
+    const search = textInput("", { type: "search", required: false, placeholder: "Find open tabs…", maxLength: 500 });
+    search.setAttribute("aria-label", "Find tabs for this group");
+    const list = node("div", "member-list");
+    const choices = [];
+    for (const tab of tabs) {
+        const choice = node("label", "member-choice");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = selected.has(tab.id);
+        checkbox.setAttribute("aria-label", `Include ${tab.title} from ${tab.windowLocation}`);
+        checkbox.addEventListener("change", () => {
+            if (checkbox.checked) selected.add(tab.id);
+            else selected.delete(tab.id);
+            count.textContent = `${selected.size} tabs selected · tabs stay in their windows`;
+        });
+        const existing = groupById(state.workspace.memberships[tab.id]);
+        const meta = [tab.windowLocation, existing && existing.id !== group?.id ? `From ${existing.name}` : "", hostFromUrl(tab.url)].filter(Boolean).join(" · ");
+        choice.title = meta;
+        choice.append(checkbox, rowCopy(tab.title, meta));
+        choices.push({ choice, tab });
+        list.append(choice);
+    }
+    search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        choices.forEach(({ choice, tab }) => { choice.hidden = !matchesTab(tab, query); });
+    });
+    if (!choices.length)
+        list.append(node("p", "dialog-help", "Open a tab before creating a group."));
+    body.append(count, search, list);
+    openDialog({ title: group ? "Edit group" : "New group", body, submitLabel: group ? "Save changes" : "Create group", onSubmit: async () => {
+        const response = await workspaceAction({ action: group ? "edit-group" : "create-group", id: group?.id, expectedRevision: group?.revision, name: name.value, color: color.value, tabIds: [...selected], expectedMemberships });
+        state.collapsedGroups.delete(response.group.id);
+        setStatus(group ? "Group updated" : "Group created");
+        render();
+    } });
+}
+
+function assignGroupDialog(tab) {
+    const expectedGroupId = state.workspace.memberships[tab.id] || null;
+    const body = node("div");
+    body.append(node("p", "dialog-help", tab.title));
+    const select = selectInput(state.workspace.groups.map((group) => [group.id, group.name]), state.workspace.memberships[tab.id] || state.workspace.groups[0]?.id || "");
+    body.append(field("Group", select));
+    const create = button("+ New group", "Create a group with this tab", () => { dialog.close(); groupDialog(null, [tab.id]); });
+    body.append(create);
+    const dialog = openDialog({ title: "Add to group", body, submitLabel: "Add tab", onSubmit: async () => {
+        if (!select.value)
+            throw new Error("Create a group first.");
+        await workspaceAction({ action: "assign-tab", tabId: tab.id, groupId: select.value, expectedGroupId });
+        setStatus("Tab added to group");
+    } });
+}
+
+async function removeGroup(group) {
+    const { removed } = await workspaceAction({ action: "remove-group", id: group.id, expectedRevision: group.revision });
+    setStatus("Group removed · tabs stay open", [{ label: "Undo", run: () => workspaceAction({ action: "restore-group", group: removed }) }]);
+}
+
+async function refreshShortcut() {
+    try {
+        state.shortcut = (await getCommands()).find((command) => command.name === "_execute_action")?.shortcut || "";
+    }
+    catch { state.shortcut = null; }
+    const visibleHint = document.querySelector("[data-shortcut-value]");
+    if (visibleHint)
+        visibleHint.textContent = shortcutLabel();
+}
+
+function shortcutLabel() {
+    return state.shortcut === null ? "Unavailable" : state.shortcut ? formatShortcut(state.shortcut) : "Not assigned";
+}
+
+function keyboardHelp() {
+    const body = node("div");
+    for (const [label, keys] of [["Open panel", shortcutLabel()], ["Focus a row", "↑ / ↓"], ["Open or select focused row", "Enter"],
+        ["Select multiple tabs", "⌘ / Ctrl + click"], ["Select a range", "Shift + click"], ["Select all matching tabs", "⌘ / Ctrl + A"],
+        ["Move between controls", "Tab / Shift+Tab"], ["Search this view", "⌘ / Ctrl + F"], ["Dismiss or exit selection", "Esc"]]) {
+        const row = node("div", "help-row");
+        const value = node("kbd", "", keys);
+        if (label === "Open panel")
+            value.dataset.shortcutValue = "true";
+        row.append(node("span", "", label), value);
+        body.append(row);
+    }
+    body.append(button("Customize panel shortcut", "Open Chrome extension shortcut settings", openShortcutSettings));
+    openDialog({ title: "Keyboard shortcuts", body, submitLabel: "Done", onSubmit: async () => {} });
+}
+
+function visibleListControls() {
+    return [...elements["tab-list"].querySelectorAll("[data-select-id]")].filter((control) => !control.closest("[hidden]") && !control.disabled);
+}
+
+function handleListKeys(event) {
+    if (event.target !== elements["tab-list"] && !event.target.closest("[data-select-id]"))
+        return;
+    const controls = visibleListControls();
+    const index = controls.findIndex((control) => control.dataset.selectId === state.selectedId);
+    if (["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        const next = event.key === "Home" ? 0 : event.key === "End" ? controls.length - 1
+            : index < 0 ? 0 : Math.max(0, Math.min(controls.length - 1, index + (event.key === "ArrowUp" ? -1 : 1)));
+        controls[next]?.focus({ preventScroll: true });
+        if (controls[next])
+            selectRow(controls[next].dataset.selectId, true);
+    }
+    else if (event.key === "Enter" && event.target === elements["tab-list"]) {
+        event.preventDefault();
+        (controls[index] || controls[0])?.click();
+    }
+}
+
+function sortMenu() {
+    if (isBusy() || selection.active()) return;
+    openMenu(elements["sort-tabs"], [["recent", "Recently used"], ["manual", "Manual order"]].map(([mode, label]) => ({
+        label: `${label}${mode === state.sortMode ? " ✓" : ""}`,
+        disabled: mode === state.sortMode,
+        run: async () => {
+            await storageSet({ [TAB_SORT_STORAGE_KEY]: mode });
+            state.sortMode = mode;
+            state.sortNow = true;
+            render();
+        }
+    })), showActionError);
+}
+
+async function init() {
+    dragController = createTabDragController({
+        root: elements["workspace-panel"], list: elements["tab-list"], ungroupZone: elements["ungroup-drop"],
+        canDrag: () => state.view === "tabs" && !selection.active() && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),
+        canReorder: () => state.sortMode === "manual",
+        describeTab: (id) => {
+            const tab = tabById(id);
+            return tab && !tab.pinned ? { id, windowId: tab.windowId, groupId: state.workspace.memberships[id] || null } : null;
+        },
+        groupName: (id) => groupById(id)?.name || "group", onStart: closeMenu,
+        onDrop: dropTab, onEnd: scheduleRefresh, onError: showActionError
+    });
+    document.getElementById("search-icon").append(icon("search"));
+    for (const [id, name] of [["refresh", "refresh"], ["keyboard-help", "keyboard"], ["new-collection", "plus"], ["sort-tabs", "sort"]])
+        elements[id].append(icon(name));
+    elements["sort-tabs"].dataset.focusKey = "sort-tabs";
+    elements["sort-tabs"].addEventListener("click", sortMenu);
+    elements["save-current"].prepend(icon("saved"));
+    const views = [...document.querySelectorAll("[data-view]")];
+    views.forEach((control, index) => {
+        control.prepend(icon(control.dataset.view));
+        control.addEventListener("click", () => switchView(control.dataset.view));
+        control.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+                return;
+            event.preventDefault();
+            const next = event.key === "Home" ? 0 : event.key === "End" ? views.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length;
+            views[next].focus();
+            switchView(views[next].dataset.view);
+        });
+    });
+    elements.search.addEventListener("input", () => { state.query[state.view] = elements.search.value; render(); });
+    elements.collection.addEventListener("change", () => { state.collection = elements.collection.value; render(); });
+    elements.refresh.addEventListener("click", () => refreshTree({ sortNow: true }).catch(showActionError));
+    elements["new-collection"].addEventListener("click", collectionDialog);
+    elements["keyboard-help"].addEventListener("click", keyboardHelp);
+    elements["save-current"].addEventListener("click", () => saveTab(state.activeTabId).catch(showActionError));
+    elements["tab-list"].addEventListener("keydown", handleListKeys);
+    document.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f" && !document.querySelector("dialog[open]")) {
+            event.preventDefault();
+            elements.search.focus();
+            elements.search.select();
+        }
+        if (event.key === "Escape" && state.movingTabId !== null) {
+            state.movingTabId = null;
+            render();
+        }
+    });
+    // Apply new activity once the pointer or keyboard leaves the list. IDs and
+    // section positions remain steady throughout selection, search, and menus.
+    const app = document.querySelector(".app");
+    const noteInteraction = () => { interactionVersion += 1; };
+    for (const event of ["pointerdown", "pointermove", "keydown", "input"])
+        app.addEventListener(event, noteInteraction, { capture: true, passive: true });
+    app.addEventListener("pointerenter", () => { render(); state.pointerInside = true; });
+    app.addEventListener("pointerleave", () => { state.pointerInside = false; render(); });
+    window.addEventListener("blur", render);
+    window.addEventListener("focus", () => refreshTree({ returnVersion: interactionVersion }).catch(showActionError));
+    const stored = await storageGet([STORAGE_SHOW_PINNED_TABS_KEY, TAB_SORT_STORAGE_KEY]);
+    state.showPinnedTabs = resolveShowPinnedTabs(stored[STORAGE_SHOW_PINNED_TABS_KEY]);
+    state.sortMode = resolveTabSort(stored[TAB_SORT_STORAGE_KEY]);
+    for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onMoved, chrome.tabs.onAttached, chrome.tabs.onDetached, chrome.tabs.onActivated, chrome.tabs.onReplaced, chrome.windows.onCreated, chrome.windows.onRemoved, chrome.windows.onFocusChanged])
+        event.addListener(scheduleRefresh);
+    chrome.windows.onBoundsChanged?.addListener(scheduleRefresh);
+    chrome.system?.display?.onDisplayChanged?.addListener(scheduleRefresh);
+    chrome.tabs.onUpdated.addListener((_id, changes) => {
+        if (["title", "url", "favIconUrl", "pinned", "audible", "mutedInfo"].some((key) => key in changes) || changes.status === "complete")
+            scheduleRefresh();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes[TAB_SORT_STORAGE_KEY]) {
+            state.sortMode = resolveTabSort(changes[TAB_SORT_STORAGE_KEY].newValue);
+            state.sortNow = true;
+            render();
+        }
+        if (area === "local" && changes[STORAGE_SHOW_PINNED_TABS_KEY])
+            state.showPinnedTabs = resolveShowPinnedTabs(changes[STORAGE_SHOW_PINNED_TABS_KEY].newValue);
+        if ((area === "local" && (changes[STORAGE_SHOW_PINNED_TABS_KEY] || changes[STORAGE_WORKSPACE_KEY])) || (area === "session" && changes[STORAGE_PRIVATE_WORKSPACE_KEY]))
+            scheduleRefresh();
+    });
+    window.addEventListener("focus", refreshShortcut);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshShortcut(); });
+    await Promise.all([refreshTree({ preferActive: true }), refreshShortcut()]);
+    elements["tab-list"].focus({ preventScroll: true });
 }
 
 init().catch(showActionError);

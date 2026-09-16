@@ -1,0 +1,203 @@
+import { AsyncTaskQueue } from "./async-task-queue.js";
+import * as chromeApi from "./chrome-api.js";
+import { MESSAGE_WORKSPACE, STORAGE_BROWSER_SESSION_KEY, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "./constants.js";
+import { applyWorkspaceOperation, orderedWorkspaceTabs, pruneMemberships, readWorkspace, rememberActiveTab, replaceMemberTab, savedUrl } from "../shared/workspace.js";
+import { isSyncWindow } from "../shared/tab-utils.js";
+import { runBulkTabAction } from "./bulk-tab-actions.js";
+
+export function createWorkspaceController(dependencies = {}) {
+    const api = { ...chromeApi, ...dependencies.api };
+    const events = dependencies.chrome || chrome;
+    const createId = dependencies.createId || (() => crypto.randomUUID());
+    const now = dependencies.now || Date.now;
+    // Every panel sends operations to this single writer. Failed writes do not
+    // poison the queue, and no tab URLs or titles are logged in error handling.
+    const queue = new AsyncTaskQueue(() => {});
+    const pendingReplacements = new Map();
+
+    async function sessionId() {
+        const stored = await api.storageGet([STORAGE_BROWSER_SESSION_KEY], "session");
+        if (stored[STORAGE_BROWSER_SESSION_KEY])
+            return stored[STORAGE_BROWSER_SESSION_KEY];
+        const id = createId();
+        await api.storageSet({ [STORAGE_BROWSER_SESSION_KEY]: id }, "session");
+        return id;
+    }
+
+    async function load(incognito, session) {
+        const area = incognito ? "session" : "local";
+        const key = incognito ? STORAGE_PRIVATE_WORKSPACE_KEY : STORAGE_WORKSPACE_KEY;
+        const stored = (await api.storageGet([key], area))[key];
+        return { area, key, stored, workspace: readWorkspace(stored, session) };
+    }
+
+    function clearReplacements(replacements) {
+        for (const [removedId, addedId] of replacements) {
+            if (pendingReplacements.get(removedId) === addedId)
+                pendingReplacements.delete(removedId);
+        }
+    }
+
+    function reconcileTabs(workspace, tabs) {
+        const liveIds = new Set(tabs.map((tab) => tab.id));
+        const replacements = [];
+        // Replacement events can arrive while an earlier queued action awaits
+        // Chrome. Migrate before that action prunes its newer browser snapshot.
+        for (const [removedId, addedId] of pendingReplacements) {
+            let currentId = addedId;
+            let liveId = liveIds.has(currentId) ? currentId : null;
+            const seen = new Set([removedId]);
+            while (pendingReplacements.has(currentId) && !seen.has(currentId)) {
+                seen.add(currentId);
+                currentId = pendingReplacements.get(currentId);
+                if (liveIds.has(currentId))
+                    liveId = currentId;
+            }
+            if (liveId !== null) {
+                // A snapshot may contain an intermediate replacement if another
+                // event arrived during storage reads. Leave later mappings queued.
+                replaceMemberTab(workspace, removedId, liveId);
+                replacements.push([removedId, addedId]);
+            }
+        }
+        pruneMemberships(workspace, tabs);
+        return replacements;
+    }
+
+    async function persist(record, workspace, replacements) {
+        if (JSON.stringify(record.stored) !== JSON.stringify(workspace))
+            await api.storageSet({ [record.key]: workspace }, record.area);
+        clearReplacements(replacements);
+    }
+
+    function scopedTabs(windows, incognito) {
+        return windows.filter((win) => isSyncWindow(win) && (win.incognito === true) === incognito)
+            .flatMap((win) => win.tabs || []);
+    }
+
+    async function execute(windowId, operation) {
+        const windows = await api.getAllNormalWindowsWithTabs();
+        const host = windows.find((win) => win.id === windowId && isSyncWindow(win));
+        if (!host)
+            throw new Error("The panel's window is no longer available. Reopen Ztab in a regular window.");
+        const incognito = host.incognito === true;
+        const tabs = scopedTabs(windows, incognito);
+        const record = await load(incognito, await sessionId());
+        let workspace = record.workspace;
+        const replacements = reconcileTabs(workspace, tabs);
+        let result = {};
+
+        if (["bulk-close-tabs", "bulk-move-tabs"].includes(operation.action)) {
+            result = await runBulkTabAction(operation, { windows, incognito }, api);
+            try {
+                const latestWindows = await api.getAllNormalWindowsWithTabs();
+                replacements.push(...reconcileTabs(workspace, scopedTabs(latestWindows, incognito)));
+                // A batch may close its panel's window, including the last private
+                // window. Finish in the worker without recreating private storage.
+                if (incognito && !latestWindows.some((win) => win.type === "normal" && win.incognito)) {
+                    await api.storageRemove([record.key], record.area);
+                    clearReplacements(replacements);
+                }
+                else
+                    await persist(record, workspace, replacements);
+            }
+            catch {
+                // Browser mutations cannot be rolled back by a storage failure.
+                // Keep their actual results so the panel can clear completed IDs.
+                result.warning = "The tab action finished, but the local library could not be refreshed. Refresh Ztab to update the list.";
+            }
+            return { workspace, ...result };
+        }
+        else if (operation.action === "activate-group") {
+            if (!workspace.groups.some((group) => group.id === operation.id))
+                throw new Error("Group no longer exists.");
+            const members = orderedWorkspaceTabs(workspace, tabs.filter((tab) => workspace.memberships[tab.id] === operation.id));
+            const tab = members.find((item) => item.id === workspace.lastActive[operation.id]) || members[0];
+            if (!tab)
+                throw new Error("This group is empty. Use Edit group to add open tabs.");
+            await api.updateTab(tab.id, { active: true });
+            await api.updateWindow(tab.windowId, { focused: true });
+            rememberActiveTab(workspace, tab.id);
+        }
+        else if (operation.action === "open-saved") {
+            const item = workspace.saved.find((entry) => entry.id === operation.id);
+            if (!item)
+                throw new Error("Saved page no longer exists.");
+            const url = savedUrl(item.url);
+            const existing = tabs.filter((tab) => (tab.pendingUrl || tab.url) === url)
+                .sort((a, b) => Number(b.windowId === host.id) - Number(a.windowId === host.id))[0];
+            const tab = existing ? await api.updateTab(existing.id, { active: true })
+                : await api.createTab({ windowId: host.id, url, active: true });
+            await api.updateWindow(tab.windowId, { focused: true });
+            rememberActiveTab(workspace, tab.id);
+        }
+        else if (operation.action !== "read") {
+            ({ workspace, result } = applyWorkspaceOperation(workspace, operation, { tabs, now: now(), createId }));
+        }
+        await persist(record, workspace, replacements);
+        return { workspace, ...result };
+    }
+
+    function request(windowId, operation) {
+        return queue.enqueue("workspace_request", () => execute(windowId, operation));
+    }
+
+    function maintain(change = {}) {
+        if (Number.isInteger(change.removedId) && Number.isInteger(change.addedId))
+            pendingReplacements.set(change.removedId, change.addedId);
+        // Capture event time before entering the queue; a slow browser or storage
+        // operation must not make an older visit appear more recent.
+        const occurredAt = now();
+        return queue.enqueue("workspace_tabs_changed", async () => {
+            const windows = await api.getAllNormalWindowsWithTabs();
+            const session = await sessionId();
+            for (const incognito of [false, true]) {
+                const tabs = scopedTabs(windows, incognito);
+                if (incognito && !windows.some((win) => win.type === "normal" && win.incognito)) {
+                    await api.storageRemove([STORAGE_PRIVATE_WORKSPACE_KEY], "session");
+                    continue;
+                }
+                const record = await load(incognito, session);
+                if (!record.stored)
+                    continue;
+                const replacements = reconcileTabs(record.workspace, tabs);
+                const activatedId = change.tabId ?? windows.find((win) => win.id === change.windowId)?.tabs?.find((tab) => tab.active)?.id;
+                if (tabs.some((tab) => tab.id === activatedId))
+                    rememberActiveTab(record.workspace, activatedId);
+                const focusedWindow = windows.find((win) => win.focused === true && isSyncWindow(win) && (win.incognito === true) === incognito);
+                const focusedTab = focusedWindow?.tabs?.find((tab) => tab.active === true && !tab.pinned);
+                const isFocusedVisit = focusedTab && activatedId === focusedTab.id &&
+                    (change.windowId === undefined || change.windowId === focusedWindow.id);
+                if (isFocusedVisit && Number.isFinite(occurredAt) && occurredAt >= 0)
+                    record.workspace.recentActivity[focusedTab.id] = Math.max(record.workspace.recentActivity[focusedTab.id] ?? 0, occurredAt);
+                await persist(record, record.workspace, replacements);
+            }
+            // Out-of-scope or already closed replacements have no live metadata
+            // to preserve. Failed writes retain their mapping for the next read.
+            clearReplacements([[change.removedId, change.addedId]]);
+        });
+    }
+
+    function registerEventHandlers() {
+        events.runtime.onMessage.addListener((message, _sender, respond) => {
+            if (message?.type !== MESSAGE_WORKSPACE)
+                return;
+            request(message.windowId, message.operation || {})
+                .then((result) => respond({ ok: true, ...result }))
+                .catch((error) => respond({ ok: false, error: error?.message || "Could not update the local library." }));
+            return true;
+        });
+        const update = (change) => { maintain(change).catch(() => {}); };
+        events.tabs.onRemoved.addListener(() => update());
+        events.tabs.onUpdated.addListener((_tabId, change) => {
+            if (change.pinned !== undefined)
+                update();
+        });
+        events.tabs.onActivated.addListener(({ tabId, windowId }) => update({ tabId, windowId }));
+        events.tabs.onReplaced.addListener((addedId, removedId) => update({ addedId, removedId }));
+        events.windows.onRemoved.addListener(() => update());
+        events.windows.onFocusChanged.addListener((windowId) => update({ windowId }));
+    }
+
+    return { registerEventHandlers, request, maintain, whenIdle: () => queue.whenIdle() };
+}

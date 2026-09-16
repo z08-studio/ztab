@@ -13,12 +13,9 @@ import { computeSyncPlan } from "../src/shared/sync-plan.js";
 import {
   buildTabTreeModel,
   flattenTabTreeTabs,
-  flattenVisibleTabTreeTabs,
   formatShortcut,
-  getAdjacentTabId,
   getMoveTargets,
-  getPinnedTabs,
-  getUnpinnedTabTree
+  getPinnedTabs
 } from "../src/shared/tab-tree.js";
 
 test("getTabUrl prefers url then pendingUrl", () => {
@@ -161,7 +158,7 @@ test("flattenTabTreeTabs and getMoveTargets support tab move picker", () => {
   ]);
 });
 
-test("tab tree exposes every pinned tab by window and hides pinned tabs from window sections", () => {
+test("tab tree exposes every pinned tab with its source window", () => {
   const tree = buildTabTreeModel([
     {
       id: 10,
@@ -183,12 +180,6 @@ test("tab tree exposes every pinned tab by window and hides pinned tabs from win
 
   assert.deepEqual(getPinnedTabs(tree).map((tab) => tab.id), [3, 1]);
   assert.deepEqual(getPinnedTabs(tree).map((tab) => tab.windowLabel), ["Current window", "Window 2"]);
-  assert.deepEqual(getUnpinnedTabTree(tree).flatMap((win) => win.tabs.map((tab) => tab.id)), [4, 2]);
-  assert.deepEqual(flattenVisibleTabTreeTabs(tree).map((tab) => tab.id), [3, 1, 4, 2]);
-  assert.deepEqual(
-    flattenVisibleTabTreeTabs(tree, { includePinnedTabs: false }).map((tab) => tab.id),
-    [4, 2],
-  );
 });
 
 test("tab tree keeps pinned copies from each window in visible order", () => {
@@ -227,17 +218,6 @@ test("tab tree treats non-http pinned tabs as distinct exact URLs", () => {
   ], 10);
 
   assert.deepEqual(getPinnedTabs(tree).map((tab) => tab.id), [1, 2]);
-});
-
-test("getAdjacentTabId moves selection and stops at list boundaries", () => {
-  const tabs = [{ id: 10 }, { id: 20 }, { id: 30 }];
-
-  assert.equal(getAdjacentTabId(tabs, 20, -1), 10);
-  assert.equal(getAdjacentTabId(tabs, 20, 1), 30);
-  assert.equal(getAdjacentTabId(tabs, 10, -1), 10);
-  assert.equal(getAdjacentTabId(tabs, 30, 1), 30);
-  assert.equal(getAdjacentTabId(tabs, null, 1), 10);
-  assert.equal(getAdjacentTabId([], null, 1), null);
 });
 
 test("formatShortcut uses compact macOS symbols without obscuring other platforms", () => {

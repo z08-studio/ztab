@@ -35,6 +35,16 @@
           </span>
         </label>
         <p id="preference-status" class="inline-status" role="status" aria-live="polite"></p>
+
+        <div class="card-action">
+          <div>
+            <h3>Display names</h3>
+            <p id="display-names-description">Show monitor names beside window headings when using multiple displays.</p>
+            <p id="display-names-state" role="status" aria-live="polite">Checking connected displays...</p>
+          </div>
+          <button id="show-display-names" class="button secondary" type="button" aria-describedby="display-names-description display-names-state display-names-status" hidden>Show display names</button>
+        </div>
+        <p id="display-names-status" class="inline-status" role="alert"></p>
       </section>
 
       <section class="settings-card" aria-labelledby="shortcuts-heading">

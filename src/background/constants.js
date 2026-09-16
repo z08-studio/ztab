@@ -17,3 +17,7 @@ export const WINDOW_OBSERVATION_DELAYS_MS = [0, 250, 500];
 export const COMPACT_WINDOW_MAX_WIDTH = 640;
 export const COMPACT_WINDOW_MAX_HEIGHT = 480;
 export const MUTATION_LEDGER_TTL_MS = 10000;
+export const STORAGE_WORKSPACE_KEY = "ztab.workspace.v1";
+export const STORAGE_PRIVATE_WORKSPACE_KEY = "ztab.privateWorkspace.v1";
+export const STORAGE_BROWSER_SESSION_KEY = "ztab.browserSession.v1";
+export const MESSAGE_WORKSPACE = "ZTAB_WORKSPACE";

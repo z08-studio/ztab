@@ -5,6 +5,7 @@ import {
     STORAGE_SHOW_PINNED_TABS_KEY
 } from "./background/constants.js";
 import { getCommands, openShortcutSettings, storageGet, storageSet } from "./background/chrome-api.js";
+import { createDisplayReader } from "./display-info.js";
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
 import { formatShortcut } from "./shared/tab-tree.js";
 
@@ -29,6 +30,9 @@ function initOptionsPage() {
     const copyDiagnosticsButton = document.getElementById("copy-diagnostics");
     const panelShortcutEl = document.getElementById("panel-shortcut");
     const customizeShortcutButton = document.getElementById("customize-shortcut");
+    const displayNamesStateEl = document.getElementById("display-names-state");
+    const displayNamesStatusEl = document.getElementById("display-names-status");
+    const showDisplayNamesButton = document.getElementById("show-display-names");
 
     if (!(actionStatusEl instanceof HTMLElement)
         || !(preferenceStatusEl instanceof HTMLElement)
@@ -37,12 +41,19 @@ function initOptionsPage() {
         || !(repairStorageButton instanceof HTMLButtonElement)
         || !(copyDiagnosticsButton instanceof HTMLButtonElement)
         || !(panelShortcutEl instanceof HTMLElement)
-        || !(customizeShortcutButton instanceof HTMLButtonElement)) {
+        || !(customizeShortcutButton instanceof HTMLButtonElement)
+        || !(displayNamesStateEl instanceof HTMLElement)
+        || !(displayNamesStatusEl instanceof HTMLElement)
+        || !(showDisplayNamesButton instanceof HTMLButtonElement)) {
         throw new Error("Ztab options page is missing required elements");
     }
 
     let actionStatusTimer = null;
     let preferenceStatusTimer = null;
+    let displayRefreshVersion = 0;
+    let requestingDisplayNames = false;
+    let displayRequestError = "";
+    const displayReader = createDisplayReader({ onChange: refreshDisplayNames });
 
     function setTemporaryStatus(element, text, timerName) {
         element.textContent = text;
@@ -102,17 +113,78 @@ function initOptionsPage() {
         }
     }
 
+    async function refreshDisplayNames() {
+        const version = ++displayRefreshVersion;
+        try {
+            const { displays, canRequestNames } = await displayReader.read();
+            if (version !== displayRefreshVersion)
+                return;
+            const namedCount = displays.filter((display) => display.name?.trim()).length;
+            showDisplayNamesButton.hidden = !canRequestNames;
+            showDisplayNamesButton.disabled = requestingDisplayNames;
+            if (!displays.length) {
+                displayNamesStateEl.textContent = "Display information is currently unavailable.";
+            }
+            else if (displays.length === 1) {
+                displayNamesStateEl.textContent = "One display connected. Names appear when multiple displays are connected.";
+            }
+            else if (namedCount === displays.length) {
+                displayNamesStateEl.textContent = `Display names enabled for ${displays.length} connected displays.`;
+            }
+            else if (namedCount) {
+                displayNamesStateEl.textContent = `Names available for ${namedCount} of ${displays.length} displays. Other displays use numbers.`;
+            }
+            else {
+                displayNamesStateEl.textContent = canRequestNames
+                    ? "Using display numbers. Allow Chrome access to show monitor names."
+                    : "Using display numbers. Monitor names are currently unavailable.";
+            }
+            if (namedCount === displays.length && namedCount > 0)
+                displayRequestError = "";
+            displayNamesStatusEl.textContent = displayRequestError;
+        }
+        catch (error) {
+            if (version !== displayRefreshVersion)
+                return;
+            showDisplayNamesButton.hidden = true;
+            displayNamesStateEl.textContent = "Display information is currently unavailable.";
+            displayNamesStatusEl.textContent = `Could not read display names: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }
+
+    showDisplayNamesButton.addEventListener("click", async () => {
+        if (requestingDisplayNames)
+            return;
+        requestingDisplayNames = true;
+        showDisplayNamesButton.disabled = true;
+        displayRequestError = "";
+        displayNamesStatusEl.textContent = "";
+        try {
+            await displayReader.requestNames();
+        }
+        catch (error) {
+            displayRequestError = error instanceof Error ? error.message : String(error);
+        }
+        requestingDisplayNames = false;
+        await refreshDisplayNames();
+    });
+
     customizeShortcutButton.addEventListener("click", () => {
         openShortcutSettings().catch((error) => {
             setTemporaryStatus(actionStatusEl, `Failed: ${error.message}`, "action");
         });
     });
     window.addEventListener("focus", loadPanelShortcut);
+    window.addEventListener("focus", refreshDisplayNames);
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible")
+        if (document.visibilityState === "visible") {
             loadPanelShortcut();
+            refreshDisplayNames();
+        }
     });
+    chrome.system?.display?.onDisplayChanged?.addListener(refreshDisplayNames);
     loadPanelShortcut();
+    refreshDisplayNames();
 
     showPinnedTabsInput.disabled = true;
     showPinnedTabsInput.addEventListener("change", async () => {
