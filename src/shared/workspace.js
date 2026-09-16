@@ -341,8 +341,10 @@ export function applyWorkspaceOperation(current, operation, context) {
             if (!Array.isArray(operation.tabIds) || (!editing && operation.tabIds.length === 0))
                 throw new Error("Select at least one open tab.");
             const ids = new Set(operation.tabIds);
-            for (const id of ids)
-                regularTab(id);
+            const selected = [...ids].map(regularTab);
+            // The target group's revision cannot detect selected tabs joining a
+            // different group while this editor was open in another panel.
+            checkBulkMemberships(workspace, selected, operation.expectedMemberships);
             group.name = name;
             group.color = operation.color;
             group.revision += 1;

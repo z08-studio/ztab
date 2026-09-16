@@ -75,32 +75,6 @@ export function getPinnedTabs(tree) {
     return flattenTabTreeTabs(tree).filter((tab) => tab.pinned);
 }
 
-export function getUnpinnedTabTree(tree) {
-    return (Array.isArray(tree) ? tree : []).map((win) => ({
-        ...win,
-        tabs: (win.tabs || []).filter((tab) => !tab.pinned)
-    }));
-}
-
-export function flattenVisibleTabTreeTabs(tree, options = {}) {
-    const includePinnedTabs = options.includePinnedTabs !== false;
-    const pinnedTabs = includePinnedTabs ? getPinnedTabs(tree) : [];
-    return [
-        ...pinnedTabs,
-        ...flattenTabTreeTabs(getUnpinnedTabTree(tree))
-    ];
-}
-
-export function getAdjacentTabId(tabs, selectedTabId, offset) {
-    if (tabs.length === 0)
-        return null;
-    const selectedIndex = tabs.findIndex((tab) => tab.id === selectedTabId);
-    if (selectedIndex === -1)
-        return tabs[0].id;
-    const nextIndex = Math.max(0, Math.min(selectedIndex + offset, tabs.length - 1));
-    return tabs[nextIndex].id;
-}
-
 export function formatShortcut(shortcut) {
     const parts = shortcut.split("+");
     const isMacShortcut = parts.includes("Command") || parts.includes("MacCtrl");

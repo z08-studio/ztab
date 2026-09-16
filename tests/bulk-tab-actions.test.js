@@ -73,7 +73,7 @@ function harness(initial = [win(1, [11, 12]), win(2, [21, 22])]) {
 
 test("bulk close survives the panel window closing, and prunes memberships and tab order", async () => {
     const h = harness();
-    await h.controller.request(1, { action: "create-group", name: "Research", color: "purple", tabIds: [11, 12, 21] });
+    await h.controller.request(1, { action: "create-group", name: "Research", color: "purple", tabIds: [11, 12, 21], expectedMemberships: { 11: null, 12: null, 21: null } });
     const result = await h.controller.request(1, { action: "bulk-close-tabs", tabIds: [11, 12, 21] });
     assert.deepEqual(result.completedIds, [11, 12, 21]);
     assert.deepEqual(result.failedIds, []);
@@ -82,6 +82,36 @@ test("bulk close survives the panel window closing, and prunes memberships and t
     assert.deepEqual(result.workspace.memberships, {});
     assert.equal(result.workspace.tabOrder.some((id) => [11, 12, 21].includes(id)), false);
     assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].memberships, {});
+});
+
+test("tab replacements during a batch preserve group metadata before the queued replacement handler runs", async () => {
+    for (const action of ["bulk-close-tabs", "bulk-move-tabs"]) {
+        const h = harness();
+        const { group } = await h.controller.request(1, {
+            action: "create-group", name: "Research", color: "purple", tabIds: [12, 21], expectedMemberships: { 12: null, 21: null }
+        });
+        await h.controller.request(1, { action: "drop-tab", tabId: 12, targetTabId: 21, placement: "before" });
+        await h.controller.maintain({ tabId: 12 });
+        h.storage.local[STORAGE_WORKSPACE_KEY].recentActivity = { 12: 900 };
+        const originalOrder = [...h.storage.local[STORAGE_WORKSPACE_KEY].tabOrder];
+        const replace = () => {
+            h.find(12).id = 99;
+            h.controller.maintain({ removedId: 12, addedId: 99 });
+            // Chrome can replace a prerendered tab again before the queue resumes.
+            h.find(99).id = 100;
+            h.controller.maintain({ removedId: 99, addedId: 100 });
+        };
+        h.hooks.afterClose = h.hooks.afterMove = replace;
+        const result = await h.controller.request(1, { action, tabIds: [11], targetWindowId: 2 });
+        await h.controller.whenIdle();
+        const { workspace } = await h.controller.request(1, { action: "read" });
+        assert.deepEqual(result.completedIds, [11]);
+        assert.deepEqual(workspace.memberships, { 21: group.id, 100: group.id });
+        assert.equal(workspace.lastActive[group.id], 100);
+        assert.deepEqual(workspace.recentActivity, { 100: 900 });
+        assert.deepEqual(workspace.tabOrder, originalOrder.map((id) => id === 12 ? 100 : id)
+            .filter((id) => action !== "bulk-close-tabs" || id !== 11));
+    }
 });
 
 test("closing the last private window does not recreate its private library", async () => {
@@ -248,7 +278,7 @@ test("concurrent bulk requests run serially through the workspace writer", async
 
 test("a workspace write failure does not conceal completed browser mutations", async () => {
     const h = harness();
-    await h.controller.request(1, { action: "create-group", name: "Research", color: "purple", tabIds: [11, 12] });
+    await h.controller.request(1, { action: "create-group", name: "Research", color: "purple", tabIds: [11, 12], expectedMemberships: { 11: null, 12: null } });
     h.api.storageSet = async () => { throw new Error("Storage quota exceeded"); };
     // The controller captures its dependency object when it is constructed.
     const controller = createWorkspaceController({ api: h.api, chrome: {}, createId: () => "session" });

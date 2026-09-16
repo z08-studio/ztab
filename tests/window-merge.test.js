@@ -4,7 +4,9 @@ import { AsyncTaskQueue } from "../src/background/async-task-queue.js";
 import { MutationLedger } from "../src/background/mutation-ledger.js";
 import { createSyncController } from "../src/background/sync-controller.js";
 import { mergeWindowTabs } from "../src/background/window-merge.js";
-import { buildTabTreeModel, getUnpinnedTabTree } from "../src/shared/tab-tree.js";
+import { buildTabTreeModel } from "../src/shared/tab-tree.js";
+import { buildTabPresentation } from "../src/shared/tab-sorting.js";
+import { emptyWorkspace } from "../src/shared/workspace.js";
 
 function tab(id, overrides = {}) {
   return { id, pinned: false, active: false, groupId: -1, url: `https://example.com/${id}`, ...overrides };
@@ -271,15 +273,16 @@ test("window merging waits for existing work on the pinned sync queue", async ()
 });
 
 test("window headings retain merge availability even when all their pins are hidden", () => {
-  const tree = getUnpinnedTabTree(buildTabTreeModel([
+  const tree = buildTabTreeModel([
     win(1, [tab(10)]), win(2, [tab(20, { pinned: true })]),
     win(3, [tab(30)], { width: 360, height: 240 }),
     win(4, [tab(40)], { incognito: true })
-  ], 1));
-  assert.equal(tree[1].tabs.length, 0);
-  assert.equal(tree[1].mergeEligible, true);
-  assert.equal(tree[2].mergeEligible, false);
-  assert.equal(tree[3].incognito, true);
+  ], 1);
+  const sections = buildTabPresentation(tree, emptyWorkspace("test-session"), "manual").sections;
+  assert.equal(sections[1].tabs.length, 0);
+  assert.equal(sections[1].win.mergeEligible, true);
+  assert.equal(sections[2].win.mergeEligible, false);
+  assert.equal(sections[3].win.incognito, true);
 });
 
 test("pin-transfer mutations are attributed only while the concrete tab is being moved", async () => {

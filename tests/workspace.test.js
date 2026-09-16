@@ -18,7 +18,10 @@ function harness() {
     const effects = [];
     const controls = { failWrite: false, now: 1000 };
     const api = {
-        storageGet: async (keys, area = "local") => Object.fromEntries(keys.map((key) => [key, structuredClone(storage[area][key])])),
+        storageGet: async (keys, area = "local") => {
+            await controls.beforeRead?.(keys, area);
+            return Object.fromEntries(keys.map((key) => [key, structuredClone(storage[area][key])]));
+        },
         storageSet: async (values, area = "local") => {
             if (controls.failWrite)
                 throw new Error("Storage quota exceeded");
@@ -61,7 +64,7 @@ test("Saved uses full URLs, deduplicates simultaneous saves, and stays independe
 
 test("virtual groups span windows without browser mutations and use last active membership", async () => {
     const h = harness();
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Research", color: "blue", tabIds: [11, 21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Research", color: "blue", tabIds: [11, 21], expectedMemberships: { 11: null, 21: null } });
     assert.deepEqual(h.effects, []);
     await h.controller.maintain({ tabId: 21 });
     await h.controller.request(1, { action: "activate-group", id: group.id });
@@ -75,8 +78,8 @@ test("virtual groups span windows without browser mutations and use last active 
 
 test("moving between groups is exclusive; ungroup undo does not overwrite subsequent assignments", async () => {
     const h = harness();
-    const a = await h.controller.request(1, { action: "create-group", name: "A", color: "green", tabIds: [11, 12] });
-    const b = await h.controller.request(1, { action: "create-group", name: "B", color: "blue", tabIds: [21] });
+    const a = await h.controller.request(1, { action: "create-group", name: "A", color: "green", tabIds: [11, 12], expectedMemberships: { 11: null, 12: null } });
+    const b = await h.controller.request(1, { action: "create-group", name: "B", color: "blue", tabIds: [21], expectedMemberships: { 21: null } });
     const { removed } = await h.controller.request(1, { action: "remove-group", id: a.group.id, expectedRevision: a.group.revision });
     await h.controller.request(1, { action: "assign-tab", tabId: 11, groupId: b.group.id });
     const restored = await h.controller.request(1, { action: "restore-group", group: removed });
@@ -88,7 +91,7 @@ test("moving between groups is exclusive; ungroup undo does not overwrite subseq
 test("worker suspension preserves live groups, but a new browser session clears reused tab IDs", async () => {
     const h = harness();
     await h.controller.request(1, { action: "save-tab", tabId: 11 });
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Keep the name", color: "purple", tabIds: [11] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Keep the name", color: "purple", tabIds: [11], expectedMemberships: { 11: null } });
     const resumed = await h.restart().request(1, { action: "read" });
     assert.equal(resumed.workspace.memberships[11], group.id);
     delete h.storage.session[STORAGE_BROWSER_SESSION_KEY];
@@ -102,11 +105,11 @@ test("worker suspension preserves live groups, but a new browser session clears 
 test("private groups and Saved use session storage and never cross browsing modes", async () => {
     const h = harness();
     await h.controller.request(3, { action: "save-tab", tabId: 31 });
-    await h.controller.request(3, { action: "create-group", name: "Private", color: "gray", tabIds: [31] });
+    await h.controller.request(3, { action: "create-group", name: "Private", color: "gray", tabIds: [31], expectedMemberships: { 31: null } });
     assert.equal(JSON.stringify(h.storage.local).includes("private.example"), false);
     assert.equal(h.storage.session[STORAGE_PRIVATE_WORKSPACE_KEY].saved.length, 1);
     await assert.rejects(h.controller.request(1, { action: "save-tab", tabId: 31 }), /Tab no longer exists/);
-    await assert.rejects(h.controller.request(3, { action: "create-group", name: "Mixed", color: "gray", tabIds: [11, 31] }), /Tab no longer exists/);
+    await assert.rejects(h.controller.request(3, { action: "create-group", name: "Mixed", color: "gray", tabIds: [11, 31], expectedMemberships: { 11: null, 31: null } }), /Tab no longer exists/);
     h.windows.pop();
     await h.controller.maintain();
     assert.equal(h.storage.session[STORAGE_PRIVATE_WORKSPACE_KEY], undefined);
@@ -141,12 +144,57 @@ test("opening a saved page reuses an exact matching tab in the same browsing mod
 
 test("tab replacement carries membership and last active state to the replacement ID", async () => {
     const h = harness();
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Replaced", color: "amber", tabIds: [11] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Replaced", color: "amber", tabIds: [11], expectedMemberships: { 11: null } });
     h.windows[0].tabs[0].id = 99;
     await h.controller.maintain({ removedId: 11, addedId: 99 });
     const { workspace } = await h.controller.request(1, { action: "read" });
     assert.deepEqual(workspace.memberships, { 99: group.id });
     assert.equal(workspace.lastActive[group.id], 99);
+});
+
+test("failed replacement writes retain the migration until a later workspace read succeeds", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "Replaced", color: "amber", tabIds: [11], expectedMemberships: { 11: null }
+    });
+    h.windows[0].tabs[0].id = 99;
+    h.controls.failWrite = true;
+    await assert.rejects(h.controller.maintain({ removedId: 11, addedId: 99 }), /quota/);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].memberships, { 11: group.id });
+    h.controls.failWrite = false;
+    const { workspace } = await h.controller.request(1, { action: "read" });
+    assert.deepEqual(workspace.memberships, { 99: group.id });
+    assert.equal(workspace.lastActive[group.id], 99);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].memberships, { 99: group.id });
+});
+
+test("replacement chains preserve metadata when the window snapshot still contains an intermediate tab", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "Replaced", color: "amber", tabIds: [11], expectedMemberships: { 11: null }
+    });
+    await h.controller.request(1, { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "before" });
+    // Keep the tab grouped after arranging a known manual position.
+    await h.controller.request(1, { action: "assign-tab", tabId: 11, groupId: group.id, append: false });
+    await h.controller.maintain({ tabId: 11 });
+    h.storage.local[STORAGE_WORKSPACE_KEY].recentActivity = { 11: 900 };
+    h.windows[0].tabs[0].id = 99;
+    let nextReplacement;
+    h.controls.beforeRead = (keys) => {
+        if (!keys.includes(STORAGE_WORKSPACE_KEY))
+            return;
+        delete h.controls.beforeRead;
+        // The first handler has already fetched a snapshot containing tab 99.
+        h.windows[0].tabs[0].id = 100;
+        nextReplacement = h.controller.maintain({ removedId: 99, addedId: 100 });
+    };
+    await h.controller.maintain({ removedId: 11, addedId: 99 });
+    await nextReplacement;
+    const { workspace } = await h.controller.request(1, { action: "read" });
+    assert.deepEqual(workspace.memberships, { 100: group.id });
+    assert.equal(workspace.lastActive[group.id], 100);
+    assert.deepEqual(workspace.tabOrder, [100, 12, 21]);
+    assert.deepEqual(workspace.recentActivity, { 100: 900 });
 });
 
 test("validation rejects unsafe URLs, missing members, and duplicate collections without mutating input", () => {
@@ -155,7 +203,7 @@ test("validation rejects unsafe URLs, missing members, and duplicate collections
     assert.equal(savedUrl("https://example.com/path?a=1#x"), "https://example.com/path?a=1#x");
     const workspace = emptyWorkspace("test");
     const context = { tabs: [], now: 0, createId: () => "new" };
-    assert.throws(() => applyWorkspaceOperation(workspace, { action: "create-group", name: "Missing", color: "green", tabIds: [1] }, context));
+    assert.throws(() => applyWorkspaceOperation(workspace, { action: "create-group", name: "Missing", color: "green", tabIds: [1], expectedMemberships: { 1: null } }, context));
     assert.equal(workspace.groups.length, 0);
     const first = applyWorkspaceOperation(workspace, { action: "create-collection", name: "Reading" }, context).workspace;
     assert.throws(() => applyWorkspaceOperation(first, { action: "create-collection", name: " reading " }, context), /already exists/);
@@ -163,16 +211,59 @@ test("validation rejects unsafe URLs, missing members, and duplicate collections
 
 test("a stale group editor cannot reclaim a tab moved by another panel", async () => {
     const h = harness();
-    const a = await h.controller.request(1, { action: "create-group", name: "A", color: "green", tabIds: [11, 12] });
-    const b = await h.controller.request(2, { action: "create-group", name: "B", color: "blue", tabIds: [21] });
+    const a = await h.controller.request(1, { action: "create-group", name: "A", color: "green", tabIds: [11, 12], expectedMemberships: { 11: null, 12: null } });
+    const b = await h.controller.request(2, { action: "create-group", name: "B", color: "blue", tabIds: [21], expectedMemberships: { 21: null } });
     await h.controller.request(2, { action: "assign-tab", tabId: 12, groupId: b.group.id });
     await assert.rejects(h.controller.request(1, {
         action: "edit-group", id: a.group.id, expectedRevision: a.group.revision,
-        name: "Overwrite", color: "green", tabIds: [11, 12]
+        name: "Overwrite", color: "green", tabIds: [11, 12], expectedMemberships: { 11: a.group.id, 12: a.group.id }
     }), /changed in another window/);
     const { workspace } = await h.controller.request(1, { action: "read" });
     assert.equal(workspace.memberships[12], b.group.id);
     assert.equal(workspace.groups[0].name, "A");
+});
+
+test("group editors reject selected tabs reassigned elsewhere even when the target group has not changed", async () => {
+    for (const action of ["create-group", "edit-group"]) {
+        const h = harness();
+        const a = await h.controller.request(1, {
+            action: "create-group", name: "A", color: "green", tabIds: [11], expectedMemberships: { 11: null }
+        });
+        const b = await h.controller.request(2, {
+            action: "create-group", name: "B", color: "blue", tabIds: [21], expectedMemberships: { 21: null }
+        });
+        const editor = {
+            action, id: a.group.id, expectedRevision: a.group.revision,
+            name: action === "create-group" ? "New" : "Renamed A", color: "green", tabIds: [11, 12],
+            expectedMemberships: { 11: a.group.id, 12: null }
+        };
+        await h.controller.request(2, { action: "assign-tab", tabId: 12, groupId: b.group.id, expectedGroupId: null });
+        const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+        assert.equal(before.groups.find((group) => group.id === a.group.id).revision, a.group.revision);
+        await assert.rejects(h.controller.request(1, editor), /group changed in another window/);
+        assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+
+        // Reopening the editor with the current membership permits an explicit transfer.
+        const updated = await h.controller.request(1, { ...editor, expectedMemberships: { 11: a.group.id, 12: b.group.id } });
+        assert.equal(updated.workspace.memberships[12], updated.group.id);
+    }
+});
+
+test("group editors require complete membership snapshots for selected tabs", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "A", color: "green", tabIds: [11], expectedMemberships: { 11: null }
+    });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    for (const action of ["create-group", "edit-group"]) {
+        for (const expectedMemberships of [undefined, {}, { 12: false }]) {
+            await assert.rejects(h.controller.request(1, {
+                action, id: group.id, expectedRevision: group.revision, name: "Changed", color: "blue",
+                tabIds: [12], expectedMemberships
+            }), /groups could not be checked/);
+            assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+        }
+    }
 });
 
 test("saved edit collisions and repeated removal undo never create duplicate URLs", async () => {
@@ -290,7 +381,7 @@ test("stale drag membership, missing tabs, invalid positions, and pinned tabs le
         { action: "drop-tab", tabId: 12, targetTabId: 11, placement: "before" },
         { action: "drop-tab", tabId: 11, targetTabId: 12, placement: "group" },
         { action: "assign-tab", tabId: 12, groupId: group.id },
-        { action: "create-group", name: "Pinned", color: "purple", tabIds: [12] }
+        { action: "create-group", name: "Pinned", color: "purple", tabIds: [12], expectedMemberships: { 12: null } }
     ]) {
         await assert.rejects(h.controller.request(1, operation), /Unpin/);
         assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
@@ -344,7 +435,7 @@ test("recent activity is backward compatible and discards malformed tab IDs or t
 test("recent activity records focused active tabs and ignores background, inactive, and missing-window events", async () => {
     const h = harness();
     h.windows[0].focused = true;
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Visits", color: "blue", tabIds: [11, 21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Visits", color: "blue", tabIds: [11, 21], expectedMemberships: { 11: null, 21: null } });
     h.controls.now = 1100;
     await h.controller.maintain({ tabId: 11, windowId: 1 });
     h.controls.now = 1200;
@@ -504,7 +595,7 @@ test("bulk assignment appends all selected tabs together and ungrouping returns 
     const h = harness();
     h.windows[0].tabs.push({ id: 13, windowId: 1, url: "https://example.com/c" });
     h.windows[1].tabs.push({ id: 22, windowId: 2, url: "https://example.org/d" });
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Research", color: "blue", tabIds: [11, 21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Research", color: "blue", tabIds: [11, 21], expectedMemberships: { 11: null, 21: null } });
     const assigned = await h.controller.request(1, {
         action: "bulk-assign-tabs", tabIds: [12, 11], groupId: group.id,
         expectedMemberships: { 12: null, 11: group.id }
@@ -530,7 +621,7 @@ test("bulk assignment appends all selected tabs together and ungrouping returns 
 
 test("stale bulk membership rejects the whole selection and cannot steal tabs from another panel", async () => {
     const h = harness();
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "green", tabIds: [21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "green", tabIds: [21], expectedMemberships: { 21: null } });
     await h.controller.request(2, { action: "assign-tab", tabId: 12, groupId: group.id });
     const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
     for (const operation of [
@@ -568,7 +659,7 @@ test("bulk actions reject invalid selections and live pinned or out-of-scope tab
 
 test("bulk grouping validates membership snapshots, destination, group names, and colors before changing data", async () => {
     const h = harness();
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21], expectedMemberships: { 21: null } });
     const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
     for (const operation of [
         { action: "bulk-assign-tabs", groupId: group.id, expectedMemberships: undefined },
@@ -587,7 +678,7 @@ test("bulk grouping validates membership snapshots, destination, group names, an
 
 test("failed bulk writes leave the whole library intact and later queued bulk actions recover", async () => {
     const h = harness();
-    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21] });
+    const { group } = await h.controller.request(1, { action: "create-group", name: "Existing", color: "blue", tabIds: [21], expectedMemberships: { 21: null } });
     const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
     h.controls.failWrite = true;
     for (const operation of [

@@ -28,9 +28,13 @@ Ztab brings your Chrome windows together in one live side panel. Manage tabs acr
 
 MANAGE TABS ACROSS WINDOWS
 
-• See tabs grouped by their Chrome window in one side panel
+• See pinned tabs, inline groups, and window sections in one side panel
 • Jump directly to a tab in any normal window
 • Move or close regular tabs without bringing each window forward
+• Keep related tabs in Ztab groups across windows without moving their browser tabs
+• Find recently used tabs first, or arrange them in Manual order
+• Select several tabs to group, move, close, or save together
+• Keep pages in Saved, an independent local library with collections and website icons
 • Use Merge here to bring another window into the current one
 • Keep tab order, groups, and pinned state when merging
 • See updates automatically as tabs and windows change
@@ -47,16 +51,17 @@ KEEP PINNED TABS ACROSS WINDOWS
 SHORTCUTS AND THOUGHTFUL INTERACTIONS
 
 • Open the panel with Ctrl+Shift+9, or Command+Shift+9 on Mac
-• Click the shortcut hint or Customize shortcut in settings to change the opening shortcut
-• See the currently assigned shortcut and navigation hints in the panel
+• Open the keyboard-help button, then Customize panel shortcut, or use Customize shortcut in settings
+• See the currently assigned shortcut in keyboard help
 • Select a tab with the Up and Down Arrow keys, then press Enter to open it
 • Move between controls with Tab and Shift+Tab
-• Double-click a row to jump to that tab
-• Find Move, Close, and Merge here beside the tabs and windows they affect
+• Click a tab title to jump to that tab
+• Close regular tabs with ×, use ··· for page actions, and find Merge here beside other windows
+• Cmd-click or Ctrl-click to select tabs, and Shift-click to select a range
 
 LOCAL BY DESIGN
 
-Ztab requires no account and uses no external server. Pinned site origins, synchronization metadata, and the panel preference stay in Chrome's local extension storage. Your tab titles and full browsing URLs are not uploaded anywhere.
+Ztab requires no account and uses no external server. Pinned site origins, preferences, group definitions, and explicitly saved page titles and URLs stay in Chrome's local extension storage. Live group membership, manual ordering, and focused-visit timestamps are tied to the current browser session. Your tab titles and full browsing URLs are not uploaded anywhere.
 
 GOOD TO KNOW
 
@@ -64,14 +69,18 @@ Ztab works between windows on the same computer and in the same Chrome profile. 
 
 Merge here works between eligible normal windows in the same browsing mode. Chrome closes a source window when its last tab moves. Shared pinned copies are deduplicated; identical regular tabs stay open. There is no merge undo action.
 
-## Release notes — 1.1.0
+Ztab groups are independent of Chrome's native tab groups. Grouping and sorting change only Ztab's list. Saved is independent of Chrome bookmarks; it contains only pages you explicitly save. Incognito groups and Saved use a separate temporary library, cleared when the last incognito window closes.
 
-Ztab is the new name for TabSpan, with a focus on three everyday capabilities: managing tabs across windows, keeping pinned apps ready across windows, and moving comfortably with shortcuts and clear interactions.
+## Release notes — 1.1.1
 
-• Introduces the Ztab name, positioning, and store artwork
-• Includes Merge here to combine another window with the current one while preserving tab order, groups, and pinned state
-• Keeps existing pinned-site data and panel preferences when the installed extension updates
-• Adds direct access to settings and shortcut customization, with keyboard help in the panel and options page
+Adds Tabs and Saved views, local groups, and batch actions to the Ztab workspace while retaining shared pinned tabs and cross-window navigation.
+
+• Groups related tabs across windows directly in Tabs, with drag grouping and Manual ordering
+• Sorts by recent use by default and keeps list positions stable during interaction
+• Adds multi-selection for grouping, moving, closing, and saving tabs
+• Keeps an independent Saved library with collections and website icons
+• Shows window and display names together when multiple monitors are connected
+• Keeps close actions visible, adds row dividers, and refreshes light and dark styles
 
 ## Permission justifications
 
@@ -85,7 +94,7 @@ Finds normal Chrome windows so tabs can be displayed, focused, moved, or merged 
 
 ### storage
 
-Stores the canonical pinned-site origin list, synchronization metadata, and panel preference locally in Chrome.
+Stores pinned-site origins, synchronization metadata, panel preferences, Saved titles and URLs, collections, and group definitions locally. Live group membership, manual order, and focused-visit timestamps are tied to a browser-session identifier. Private browsing uses a separate temporary session library.
 
 ### sidePanel
 
@@ -94,6 +103,10 @@ Displays the cross-window tab manager when the toolbar button or opening shortcu
 ### tabGroups
 
 Reads and restores existing tab groups, including their names, colors, and collapsed state, when Merge here moves tabs to another window.
+
+### system.display
+
+Reads connected display names and positions locally so each window can show its monitor name. Ztab does not change display settings. When names are unavailable, the explicit Show display names action can request Chrome's optional window-management browser permission; ordinary panel refreshes do not prompt.
 
 ### favicon
 
@@ -106,7 +119,7 @@ Reads page icons through Chrome's favicon service to identify Saved pages, inclu
 - Authentication information: Not collected.
 - Personal communications: Not collected.
 - Location: Not collected.
-- Web history: Tab URLs are processed locally to display and manage open tabs and identify pinned site origins; they are not transmitted or sold.
+- Web history: Open tab URLs and focused-visit timestamps are processed locally to manage and sort tabs. Saved titles and full URLs persist only when explicitly saved. Ztab does not read Chrome browsing history or transmit or sell this data.
 - Website content: Not collected or transmitted.
 - Remote code: Not used.
 

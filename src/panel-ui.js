@@ -68,7 +68,15 @@ export function selectInput(options, value) {
     return select;
 }
 
+function restoreFocus(anchor) {
+    const focusKey = anchor?.dataset.focusKey;
+    const currentAnchor = focusKey ? [...document.querySelectorAll("[data-focus-key]")].find((control) => control.dataset.focusKey === focusKey) : anchor;
+    const available = currentAnchor?.isConnected && !currentAnchor.disabled && !currentAnchor.closest("[hidden]");
+    (available ? currentAnchor : document.getElementById("tab-list"))?.focus({ preventScroll: true });
+}
+
 export function openDialog({ title, body, submitLabel = "Save", onSubmit }) {
+    const focusAnchor = document.activeElement;
     const dialog = node("dialog", "dialog");
     dialog.setAttribute("aria-labelledby", "dialog-title");
     const form = node("form");
@@ -111,7 +119,12 @@ export function openDialog({ title, body, submitLabel = "Save", onSubmit }) {
         if (busy)
             event.preventDefault();
     });
-    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    dialog.addEventListener("close", () => {
+        dialog.remove();
+        // Saving can replace the launcher's row; another dialog may already
+        // have opened before this asynchronous close event is delivered.
+        if (!document.querySelector("dialog[open]")) restoreFocus(focusAnchor);
+    }, { once: true });
     dialog.showModal();
     return dialog;
 }
@@ -124,11 +137,7 @@ export function closeMenu() {
 
 export function openMenu(anchor, items, onError) {
     closeMenu();
-    const focusAnchor = () => {
-        const focusKey = anchor.dataset.focusKey;
-        const currentAnchor = focusKey ? [...document.querySelectorAll("[data-focus-key]")].find((control) => control.dataset.focusKey === focusKey) : anchor;
-        (currentAnchor || document.getElementById("tab-list"))?.focus({ preventScroll: true });
-    };
+    const focusAnchor = () => restoreFocus(anchor);
     const menu = node("div", "menu");
     menu.setAttribute("popover", "auto");
     menu.setAttribute("role", "menu");

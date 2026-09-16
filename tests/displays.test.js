@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { findWindowDisplay, normalizeDisplays } from "../src/shared/displays.js";
-import { buildTabTreeModel, getMoveTargets, getPinnedTabs, getUnpinnedTabTree } from "../src/shared/tab-tree.js";
+import { buildTabTreeModel, getMoveTargets, getPinnedTabs } from "../src/shared/tab-tree.js";
 import { getDisplays } from "../src/background/chrome-api.js";
 import { createDisplayReader } from "../src/display-info.js";
 
@@ -79,7 +79,7 @@ test("window locations keep window numbers and reach pinned rows and move destin
   assert.equal(tree[0].displayName, "Studio Display");
   assert.equal(tree[1].displayName, "DELL U2723QE");
   assert.equal(getPinnedTabs(tree)[0].windowLocation, "Current window · Studio Display");
-  assert.equal(getUnpinnedTabTree(tree)[1].tabs[0].windowLocation, "Window 2 · DELL U2723QE");
+  assert.equal(tree[1].tabs[0].windowLocation, "Window 2 · DELL U2723QE");
   assert.equal(getMoveTargets(tree, 1)[0].displayName, "DELL U2723QE");
   assert.equal(buildTabTreeModel([{ ...windows[1], left: 100 }], 2, displays)[0].displayName, "Studio Display");
 });

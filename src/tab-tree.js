@@ -692,12 +692,15 @@ function groupDialog(group = null, preselected = []) {
     properties.append(field("Group name", name), field("Color", color));
     body.append(properties);
     const selected = new Set(group ? membersOf(group.id).map((tab) => tab.id) : preselected);
+    const tabs = allTabs().filter((tab) => !tab.pinned);
+    // Keep the editor's membership snapshot even while other panels refresh us.
+    const expectedMemberships = Object.fromEntries(tabs.map((tab) => [tab.id, state.workspace.memberships[tab.id] || null]));
     const count = node("p", "dialog-help", `${selected.size} tabs selected · tabs stay in their windows`);
     const search = textInput("", { type: "search", required: false, placeholder: "Find open tabs…", maxLength: 500 });
     search.setAttribute("aria-label", "Find tabs for this group");
     const list = node("div", "member-list");
     const choices = [];
-    for (const tab of allTabs().filter((item) => !item.pinned)) {
+    for (const tab of tabs) {
         const choice = node("label", "member-choice");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
@@ -709,7 +712,7 @@ function groupDialog(group = null, preselected = []) {
             count.textContent = `${selected.size} tabs selected · tabs stay in their windows`;
         });
         const existing = groupById(state.workspace.memberships[tab.id]);
-        const meta = [tab.windowLocation, tab.pinned ? "Pinned" : "", existing && existing.id !== group?.id ? `From ${existing.name}` : "", hostFromUrl(tab.url)].filter(Boolean).join(" · ");
+        const meta = [tab.windowLocation, existing && existing.id !== group?.id ? `From ${existing.name}` : "", hostFromUrl(tab.url)].filter(Boolean).join(" · ");
         choice.title = meta;
         choice.append(checkbox, rowCopy(tab.title, meta));
         choices.push({ choice, tab });
@@ -723,7 +726,7 @@ function groupDialog(group = null, preselected = []) {
         list.append(node("p", "dialog-help", "Open a tab before creating a group."));
     body.append(count, search, list);
     openDialog({ title: group ? "Edit group" : "New group", body, submitLabel: group ? "Save changes" : "Create group", onSubmit: async () => {
-        const response = await workspaceAction({ action: group ? "edit-group" : "create-group", id: group?.id, expectedRevision: group?.revision, name: name.value, color: color.value, tabIds: [...selected] });
+        const response = await workspaceAction({ action: group ? "edit-group" : "create-group", id: group?.id, expectedRevision: group?.revision, name: name.value, color: color.value, tabIds: [...selected], expectedMemberships });
         state.collapsedGroups.delete(response.group.id);
         setStatus(group ? "Group updated" : "Group created");
         render();

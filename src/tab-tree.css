@@ -797,6 +797,8 @@ input::placeholder {
     inset: auto;
     margin: 0;
     width: min(224px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--line);

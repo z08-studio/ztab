@@ -13,6 +13,7 @@ export function createWorkspaceController(dependencies = {}) {
     // Every panel sends operations to this single writer. Failed writes do not
     // poison the queue, and no tab URLs or titles are logged in error handling.
     const queue = new AsyncTaskQueue(() => {});
+    const pendingReplacements = new Map();
 
     async function sessionId() {
         const stored = await api.storageGet([STORAGE_BROWSER_SESSION_KEY], "session");
@@ -30,9 +31,43 @@ export function createWorkspaceController(dependencies = {}) {
         return { area, key, stored, workspace: readWorkspace(stored, session) };
     }
 
-    async function persist(record, workspace) {
+    function clearReplacements(replacements) {
+        for (const [removedId, addedId] of replacements) {
+            if (pendingReplacements.get(removedId) === addedId)
+                pendingReplacements.delete(removedId);
+        }
+    }
+
+    function reconcileTabs(workspace, tabs) {
+        const liveIds = new Set(tabs.map((tab) => tab.id));
+        const replacements = [];
+        // Replacement events can arrive while an earlier queued action awaits
+        // Chrome. Migrate before that action prunes its newer browser snapshot.
+        for (const [removedId, addedId] of pendingReplacements) {
+            let currentId = addedId;
+            let liveId = liveIds.has(currentId) ? currentId : null;
+            const seen = new Set([removedId]);
+            while (pendingReplacements.has(currentId) && !seen.has(currentId)) {
+                seen.add(currentId);
+                currentId = pendingReplacements.get(currentId);
+                if (liveIds.has(currentId))
+                    liveId = currentId;
+            }
+            if (liveId !== null) {
+                // A snapshot may contain an intermediate replacement if another
+                // event arrived during storage reads. Leave later mappings queued.
+                replaceMemberTab(workspace, removedId, liveId);
+                replacements.push([removedId, addedId]);
+            }
+        }
+        pruneMemberships(workspace, tabs);
+        return replacements;
+    }
+
+    async function persist(record, workspace, replacements) {
         if (JSON.stringify(record.stored) !== JSON.stringify(workspace))
             await api.storageSet({ [record.key]: workspace }, record.area);
+        clearReplacements(replacements);
     }
 
     function scopedTabs(windows, incognito) {
@@ -49,20 +84,22 @@ export function createWorkspaceController(dependencies = {}) {
         const tabs = scopedTabs(windows, incognito);
         const record = await load(incognito, await sessionId());
         let workspace = record.workspace;
-        pruneMemberships(workspace, tabs);
+        const replacements = reconcileTabs(workspace, tabs);
         let result = {};
 
         if (["bulk-close-tabs", "bulk-move-tabs"].includes(operation.action)) {
             result = await runBulkTabAction(operation, { windows, incognito }, api);
             try {
                 const latestWindows = await api.getAllNormalWindowsWithTabs();
-                pruneMemberships(workspace, scopedTabs(latestWindows, incognito));
+                replacements.push(...reconcileTabs(workspace, scopedTabs(latestWindows, incognito)));
                 // A batch may close its panel's window, including the last private
                 // window. Finish in the worker without recreating private storage.
-                if (incognito && !latestWindows.some((win) => win.type === "normal" && win.incognito))
+                if (incognito && !latestWindows.some((win) => win.type === "normal" && win.incognito)) {
                     await api.storageRemove([record.key], record.area);
+                    clearReplacements(replacements);
+                }
                 else
-                    await persist(record, workspace);
+                    await persist(record, workspace, replacements);
             }
             catch {
                 // Browser mutations cannot be rolled back by a storage failure.
@@ -97,7 +134,7 @@ export function createWorkspaceController(dependencies = {}) {
         else if (operation.action !== "read") {
             ({ workspace, result } = applyWorkspaceOperation(workspace, operation, { tabs, now: now(), createId }));
         }
-        await persist(record, workspace);
+        await persist(record, workspace, replacements);
         return { workspace, ...result };
     }
 
@@ -106,6 +143,8 @@ export function createWorkspaceController(dependencies = {}) {
     }
 
     function maintain(change = {}) {
+        if (Number.isInteger(change.removedId) && Number.isInteger(change.addedId))
+            pendingReplacements.set(change.removedId, change.addedId);
         // Capture event time before entering the queue; a slow browser or storage
         // operation must not make an older visit appear more recent.
         const occurredAt = now();
@@ -121,9 +160,7 @@ export function createWorkspaceController(dependencies = {}) {
                 const record = await load(incognito, session);
                 if (!record.stored)
                     continue;
-                if (change.addedId !== undefined && tabs.some((tab) => tab.id === change.addedId))
-                    replaceMemberTab(record.workspace, change.removedId, change.addedId);
-                pruneMemberships(record.workspace, tabs);
+                const replacements = reconcileTabs(record.workspace, tabs);
                 const activatedId = change.tabId ?? windows.find((win) => win.id === change.windowId)?.tabs?.find((tab) => tab.active)?.id;
                 if (tabs.some((tab) => tab.id === activatedId))
                     rememberActiveTab(record.workspace, activatedId);
@@ -133,8 +170,11 @@ export function createWorkspaceController(dependencies = {}) {
                     (change.windowId === undefined || change.windowId === focusedWindow.id);
                 if (isFocusedVisit && Number.isFinite(occurredAt) && occurredAt >= 0)
                     record.workspace.recentActivity[focusedTab.id] = Math.max(record.workspace.recentActivity[focusedTab.id] ?? 0, occurredAt);
-                await persist(record, record.workspace);
+                await persist(record, record.workspace, replacements);
             }
+            // Out-of-scope or already closed replacements have no live metadata
+            // to preserve. Failed writes retain their mapping for the next read.
+            clearReplacements([[change.removedId, change.addedId]]);
         });
     }
 
