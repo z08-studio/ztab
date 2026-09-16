@@ -118,114 +118,155 @@ function promoSvg({ width, height, small, iconDataUri }) {
     </svg>`;
 }
 
+// Sources capture the actual native side-panel rendering surface through CDP.
+// Check its measured viewport before writing any assets; no browser frame is added.
+const screenshotCapture = {
+  width: 360,
+  height: 665,
+};
+
 function screenshotSvg({
-  screenshotDataUri,
-  sourceWidth,
-  sourceHeight,
-  crop,
-  headlineLead,
-  headlineAccent,
-  supporting,
-  pillar,
-  iconDataUri,
+  screenshotDataUri, sourceWidth, sourceHeight, headlineLead,
+  headlineAccent, supporting, pillar, accent, steps = [], keyboard = false,
+  footnote, iconDataUri,
 }) {
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
-      <defs>
-        <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#030922"/>
-          <stop offset=".58" stop-color="#08133D"/>
-          <stop offset="1" stop-color="#17205C"/>
-        </linearGradient>
-        <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#A9C2FF"/>
-          <stop offset="1" stop-color="#71D7FF"/>
-        </linearGradient>
-        <filter id="shadow" x="-10%" y="-15%" width="120%" height="135%">
-          <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000619" flood-opacity=".48"/>
-        </filter>
-        <clipPath id="productClip">
-          <rect x="28" y="220" width="1224" height="556" rx="14"/>
-        </clipPath>
-      </defs>
-
-      <rect width="1280" height="800" fill="url(#background)"/>
-      <circle cx="1235" cy="124" r="155" fill="#5639D8" opacity=".2"/>
-      <circle cx="21" cy="22" r="58" fill="none" stroke="#FF755F" stroke-width="18" opacity=".95"/>
-      <g fill="#58C8FF" opacity=".85">
-        <circle cx="1177" cy="34" r="2.5"/><circle cx="1195" cy="34" r="2.5"/><circle cx="1213" cy="34" r="2.5"/><circle cx="1231" cy="34" r="2.5"/>
-        <circle cx="1177" cy="52" r="2.5"/><circle cx="1195" cy="52" r="2.5"/><circle cx="1213" cy="52" r="2.5"/><circle cx="1231" cy="52" r="2.5"/>
-      </g>
-
-      <image href="${iconDataUri}" x="60" y="31" width="42" height="42"/>
-      <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">Ztab</text>
-      <text x="1129" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">${pillar}</text>
-      <text x="60" y="132" font-family="Manrope" font-size="52" font-weight="800" letter-spacing="-2">
-        <tspan fill="#FFFFFF">${headlineLead}</tspan>
-        <tspan fill="url(#accent)"> ${headlineAccent}</tspan>
-      </text>
-      <text x="62" y="179" fill="#C6D4FA" font-family="Manrope" font-size="24" font-weight="500" letter-spacing="-.25">${supporting}</text>
-
-      <rect x="28" y="220" width="1224" height="556" rx="14" fill="#071033" filter="url(#shadow)"/>
-      <g clip-path="url(#productClip)">
-        <svg x="28" y="220" width="1224" height="556" viewBox="${crop.x} ${crop.y} ${crop.width} ${crop.height}" preserveAspectRatio="xMidYMid meet">
-          <image href="${screenshotDataUri}" width="${sourceWidth}" height="${sourceHeight}"/>
-        </svg>
-      </g>
-      <rect x="28.5" y="220.5" width="1223" height="555" rx="13.5" fill="none" stroke="#8EA8EF" stroke-opacity=".45"/>
-    </svg>`;
-}
-
-function keyboardScreenshotSvg({ screenshotDataUri, sourceWidth, sourceHeight, crop, iconDataUri }) {
-  const productScale = Math.min(520 / crop.width, 646 / crop.height);
-  const productWidth = crop.width * productScale;
-  const productHeight = crop.height * productScale;
+  const productScale = Math.min(520 / sourceWidth, 688 / sourceHeight);
+  const productWidth = sourceWidth * productScale;
+  const productHeight = sourceHeight * productScale;
   const productX = 700 + (520 - productWidth) / 2;
-  const productY = 102 + (646 - productHeight) / 2;
-  const steps = [
-    { y: 392, key: "Your shortcut", title: "Open the side panel", detail: "Customize the opener in Chrome." },
-    { y: 494, key: "Up / Down", title: "Select a tab", detail: "Move through tabs across windows." },
-    { y: 596, key: "Enter", title: "Switch to that tab", detail: "Bring its window into focus." },
-  ];
+  const productY = 88 + (688 - productHeight) / 2;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
     <defs>
-      <linearGradient id="keyboardBackground" x1="0" y1="0" x2="1" y2="1">
+      <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#070E2A"/>
         <stop offset="1" stop-color="#1B2456"/>
       </linearGradient>
-      <clipPath id="keyboardProductClip"><rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16"/></clipPath>
+      <filter id="shadow" x="-10%" y="-5%" width="120%" height="115%">
+        <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000619" flood-opacity=".4"/>
+      </filter>
+      <clipPath id="productClip"><rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16"/></clipPath>
     </defs>
-    <rect width="1280" height="800" fill="url(#keyboardBackground)"/>
-    <circle cx="1185" cy="65" r="200" fill="#73DCC7" opacity=".04"/>
+    <rect width="1280" height="800" fill="url(#background)"/>
+    <circle cx="1190" cy="50" r="205" fill="${accent}" opacity=".055"/>
+    <circle cx="17" cy="14" r="58" fill="none" stroke="${accent}" stroke-width="18" opacity=".14"/>
     <image href="${iconDataUri}" x="60" y="31" width="42" height="42"/>
     <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">Ztab</text>
-    <text x="1220" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">03 / KEYS AND INTERACTIONS</text>
-    <text x="60" y="180" fill="#FFFFFF" font-family="Manrope" font-size="55" font-weight="800" letter-spacing="-2">
-      <tspan x="60">Fast keys.</tspan>
-      <tspan x="60" dy="65" fill="#B7CCFF">Thoughtful details.</tspan>
+    <text x="1220" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">${pillar}</text>
+    <text x="60" y="177" fill="#FFFFFF" font-family="Manrope" font-size="50" font-weight="800" letter-spacing="-1.7">
+      <tspan x="60">${headlineLead}</tspan>
+      <tspan x="60" dy="64" fill="#B7CCFF">${headlineAccent}</tspan>
     </text>
-    <text x="63" y="307" fill="#C6D4FA" font-family="Manrope" font-size="23" font-weight="500">
-      <tspan x="63">Keep your hands on the keyboard.</tspan>
-      <tspan x="63" dy="34">Get to the right tab in a few keystrokes.</tspan>
+    <text x="63" y="305" fill="#C6D4FA" font-family="Manrope" font-size="22" font-weight="500">
+      ${supporting.map((line, index) => `<tspan x="63" dy="${index ? 33 : 0}">${line}</tspan>`).join("")}
     </text>
-    ${steps.map(({ y, key, title, detail }) => `
-      <rect x="62" y="${y}" width="170" height="62" rx="11" fill="#233158" stroke="#5A6E9F"/>
-      <path d="M76 ${y + 55}H218" stroke="#0D1737" stroke-width="2" stroke-linecap="round"/>
-      <text x="147" y="${y + 37}" text-anchor="middle" fill="#F3F6FF" font-family="Manrope" font-size="18" font-weight="700">${key}</text>
-      <text x="253" y="${y + 23}" fill="#F3F6FF" font-family="Manrope" font-size="21" font-weight="700">${title}</text>
-      <text x="253" y="${y + 50}" fill="#B9C9EC" font-family="Manrope" font-size="15" font-weight="500">${detail}</text>
-    `).join("")}
-    <text x="63" y="728" fill="#8FA5D3" font-family="Manrope" font-size="14" font-weight="500">Keyboard navigation works while the tab list is focused.</text>
-    <rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16" fill="#071033"/>
-    <g clip-path="url(#keyboardProductClip)">
-      <svg x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" viewBox="${crop.x} ${crop.y} ${crop.width} ${crop.height}" preserveAspectRatio="xMidYMid meet">
-        <image href="${screenshotDataUri}" width="${sourceWidth}" height="${sourceHeight}"/>
-      </svg>
+    ${steps.map(({ key, title, detail }, index) => {
+      const y = 394 + index * 103;
+      return keyboard ? `
+        <rect x="62" y="${y}" width="158" height="62" rx="11" fill="#233158" stroke="#5A6E9F"/>
+        <path d="M76 ${y + 55}H206" stroke="#0D1737" stroke-width="2" stroke-linecap="round"/>
+        <text x="141" y="${y + 37}" text-anchor="middle" fill="#F3F6FF" font-family="Manrope" font-size="17" font-weight="700">${key}</text>
+        <text x="242" y="${y + 23}" fill="#F3F6FF" font-family="Manrope" font-size="21" font-weight="700">${title}</text>
+        <text x="242" y="${y + 50}" fill="#B9C9EC" font-family="Manrope" font-size="15" font-weight="500">${detail}</text>` : `
+        <rect x="62" y="${y + 5}" width="4" height="49" rx="2" fill="${accent}"/>
+        <text x="86" y="${y + 23}" fill="#F3F6FF" font-family="Manrope" font-size="22" font-weight="700">${title}</text>
+        <text x="86" y="${y + 54}" fill="#B9C9EC" font-family="Manrope" font-size="18" font-weight="500">${detail}</text>`;
+    }).join("")}
+    <text x="63" y="738" fill="#8FA5D3" font-family="Manrope" font-size="14" font-weight="500">${footnote}</text>
+    <rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16" fill="#071033" filter="url(#shadow)"/>
+    <g clip-path="url(#productClip)">
+      <image href="${screenshotDataUri}" x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}"/>
     </g>
     <rect x="${productX + 0.5}" y="${productY + 0.5}" width="${productWidth - 1}" height="${productHeight - 1}" rx="15.5" fill="none" stroke="#8EA8EF" stroke-opacity=".45"/>
   </svg>`;
 }
+
+const screenshotSpecs = [
+  {
+    source: "side-panel-raw.png",
+    output: "screenshot-01-side-panel.png",
+    headlineLead: "All your tabs.",
+    headlineAccent: "One clear view.",
+    supporting: ["Recent tabs first. Your windows together.", "Move, close, or merge without the tab hunt."],
+    pillar: "01 / ACROSS WINDOWS",
+    accent: "#FF846E",
+    steps: [
+      { title: "Across your windows", detail: "Open, move, close, or merge from one list." },
+      { title: "Recently used first", detail: "Keep active work near the top." },
+      { title: "Your order when you need it", detail: "Switch to Manual to arrange tabs yourself." },
+    ],
+    footnote: "Actual tabs from multiple Chrome windows.",
+  },
+  {
+    source: "pinned-tabs-raw.png",
+    output: "screenshot-02-pinned-tabs.png",
+    headlineLead: "Pin once.",
+    headlineAccent: "Ready in every window.",
+    supporting: ["Keep your everyday apps", "close in each Chrome window."],
+    pillar: "02 / PINNED TABS IN SYNC",
+    accent: "#A58AFF",
+    steps: [
+      { title: "Your apps, kept in sync", detail: "Pinned copies follow you across windows." },
+      { title: "Always easy to find", detail: "Pinned tabs stay together at the top." },
+      { title: "A quieter view when you want it", detail: "Hide the pinned list while sync continues." },
+    ],
+    footnote: "Pinned-tab sync applies to eligible Chrome windows.",
+  },
+  {
+    source: "keyboard-raw.png",
+    output: "screenshot-03-keyboard.png",
+    headlineLead: "Fast keys.",
+    headlineAccent: "Thoughtful details.",
+    supporting: ["Keep your hands on the keyboard.", "Reach the right tab in a few keystrokes."],
+    pillar: "03 / KEYS AND INTERACTIONS",
+    accent: "#73DCC7",
+    keyboard: true,
+    steps: [
+      { key: "Your shortcut", title: "Open the side panel", detail: "Customize the opener in Chrome." },
+      { key: "Up / Down", title: "Focus a tab", detail: "Move through the visible list." },
+      { key: "Enter", title: "Switch to that tab", detail: "Bring its window into focus." },
+    ],
+    footnote: "Arrow keys and Enter work while the tab list is focused.",
+  },
+  {
+    source: "groups-bulk-raw.png",
+    output: "screenshot-04-groups-bulk.png",
+    headlineLead: "Related tabs.",
+    headlineAccent: "Together at last.",
+    supporting: ["Bring related work into a Ztab group.", "Select several tabs and act on them together."],
+    pillar: "04 / GROUPS AND BULK ACTIONS",
+    accent: "#A58AFF",
+    steps: [
+      { title: "Drag tabs together", detail: "Group related pages across windows." },
+      { title: "Select once, act together", detail: "Group, move, close, or save selected tabs." },
+      { title: "Your windows stay in place", detail: "Grouping does not move the actual tabs." },
+    ],
+    footnote: "Groups belong to Ztab and are independent of Chrome tab groups.",
+  },
+  {
+    source: "saved-raw.png",
+    output: "screenshot-05-saved.png",
+    headlineLead: "Worth keeping?",
+    headlineAccent: "Save it for later.",
+    supporting: ["Give useful pages a place of their own.", "Keep them handy after their tabs are closed."],
+    pillar: "05 / YOUR SAVED PAGES",
+    accent: "#73DCC7",
+    steps: [
+      { title: "Save a page in a moment", detail: "Use a tab menu or Save current tab." },
+      { title: "Find it when you need it", detail: "Search saved titles and website addresses." },
+      { title: "Keep useful collections", detail: "Organize pages in your own local library." },
+    ],
+    footnote: "Saved uses Ztab's local library, separate from Chrome bookmarks.",
+  },
+];
+
+const screenshots = await Promise.all(screenshotSpecs.map(async (spec) => {
+  const source = await readFile(join(screenshotSourceDirectory, spec.source));
+  const decoded = PNG.sync.read(source);
+  if (decoded.width !== screenshotCapture.width || decoded.height !== screenshotCapture.height)
+    throw new Error(`${spec.source}: expected ${screenshotCapture.width}×${screenshotCapture.height}, got ${decoded.width}×${decoded.height}. Recheck the native side-panel viewport and screenshotCapture contract.`);
+  return { ...spec, screenshotDataUri: escapeDataUri(source), sourceWidth: decoded.width, sourceHeight: decoded.height };
+}));
 
 const iconSvg = await readFile(join(sourceDirectory, "icon.svg"), "utf8");
 const smallIconSvg = await readFile(
@@ -245,49 +286,12 @@ const iconDataUri = escapeDataUri(renderedIcon);
 
 await mkdir(screenshotFinalDirectory, { recursive: true });
 
-const screenshotSpecs = [
-  {
-    source: "side-panel-raw.png",
-    output: "screenshot-01-side-panel.png",
-    headlineLead: "All your tabs.",
-    headlineAccent: "One place.",
-    supporting: "View, move, and close tabs, or merge windows from one side panel.",
-    pillar: "01 / ACROSS WINDOWS",
-  },
-  {
-    source: "pinned-tabs-raw.png",
-    output: "screenshot-02-pinned-tabs.png",
-    headlineLead: "Pin once.",
-    headlineAccent: "Ready in every window.",
-    supporting: "Keep the same pinned apps across every Chrome window.",
-    pillar: "02 / PINNED TABS IN SYNC",
-  },
-  {
-    source: "keyboard-raw.png",
-    output: "screenshot-03-keyboard.png",
-    crop: { x: 1030, y: 84, width: 370, height: 656 },
-    render: keyboardScreenshotSvg,
-  },
-];
-
-const screenshotRenders = screenshotSpecs.map(async (spec) => {
-  const source = await readFile(join(screenshotSourceDirectory, spec.source));
-  const decoded = PNG.sync.read(source);
-
-  return renderSvg(
-    (spec.render || screenshotSvg)({
-      ...spec,
-      crop: spec.crop || { x: 0, y: 0, width: decoded.width, height: decoded.height },
-      screenshotDataUri: escapeDataUri(source),
-      sourceWidth: decoded.width,
-      sourceHeight: decoded.height,
-      iconDataUri,
-    }),
-    join(screenshotFinalDirectory, spec.output),
-    1280,
-    { removeAlpha: true },
-  );
-});
+const screenshotRenders = screenshots.map((spec) => renderSvg(
+  screenshotSvg({ ...spec, iconDataUri }),
+  join(screenshotFinalDirectory, spec.output),
+  1280,
+  { removeAlpha: true },
+));
 
 await Promise.all([
   renderSvg(

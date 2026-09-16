@@ -26,6 +26,17 @@ test("package metadata presents Ztab as a cross-window tab manager", async () =>
   assert.ok(manifest.description.length <= 132);
 });
 
+test("the supported Chrome version includes the light-dark interface baseline", async () => {
+  const manifestUrl = new URL("../manifest.json", import.meta.url);
+  const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
+
+  assert.match(manifest.minimum_chrome_version, /^\d+(?:\.\d+){0,3}$/);
+  assert.ok(
+    Number(manifest.minimum_chrome_version.split(".")[0]) >= 123,
+    "The interface requires light-dark(), available in Chrome 123 and later.",
+  );
+});
+
 test("rebrand preserves installed extension state and message identifiers", () => {
   assert.deepEqual(
     [

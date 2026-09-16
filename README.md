@@ -10,7 +10,11 @@ Ztab brings your Chrome windows together with three everyday capabilities:
 - **Keep pinned tabs across windows.** Pin an app once to keep it ready in every eligible Chrome window.
 - **Work comfortably with keys and clicks.** Open the panel with a shortcut, navigate with the keyboard, and use actions beside the tabs and windows they affect.
 
-Ztab was previously named TabSpan. The capital Z follows the Z-series naming convention used by Zdraft. The updated name is prepared in this repository; the Chrome Web Store listing and installed copies receive it when the next update is published. See the [release guide](CHROME_WEB_STORE.md) for the remaining rollout steps.
+Ztab was previously named TabSpan. The capital Z follows the Z-series naming convention used by Zdraft.
+
+**Version 2.0.0 is being prepared for the Chrome Web Store.** The features described here reflect the current source, including inline groups, batch actions, Saved, and recent sorting. Preparing the release does not submit or publish it; see the [release guide](CHROME_WEB_STORE.md) for verification and rollout status.
+
+Ztab 2.0 requires **Chrome 123 or later**. Older Chrome installations remain on their previous compatible extension version until Chrome is upgraded.
 
 ## Every window in one side panel
 
