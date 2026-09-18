@@ -1,3 +1,5 @@
+@import url("./support-amount.css");
+
 :root {
     color-scheme: light dark;
     --surface: light-dark(#fcfbfd, #202126);
@@ -915,13 +917,30 @@ input::placeholder {
 
 .support-heading {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
 }
 
 .support-heading .dialog-title {
     margin: 0;
+}
+
+.support-heading .icon-button { flex-shrink: 0; }
+
+.support-pay {
+    display: block;
+    padding: 9px 12px;
+    margin: 10px 0;
+    text-decoration: none;
+    text-align: center;
+}
+
+.support-mobile {
+    display: block;
+    margin: 10px 0 14px;
+    color: var(--accent);
+    text-align: center;
 }
 
 .support-thanks {

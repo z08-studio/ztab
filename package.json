@@ -7,12 +7,20 @@
     "assets:support": "node scripts/render-support-qr.mjs",
     "assets:store": "node scripts/render-store-assets.mjs",
     "package": "node scripts/package.mjs",
+    "support:dev": "vite --config support-site/vite.config.js",
+    "support:build": "vite build --config support-site/vite.config.js",
+    "support:build:preview": "vite build --mode preview --config support-site/vite.config.js",
+    "support:preview": "vite preview --config support-site/vite.config.js",
     "test": "node --test"
   },
   "devDependencies": {
+    "@reown/appkit": "1.8.24",
+    "@reown/appkit-adapter-ethers": "1.8.24",
     "@resvg/resvg-js": "^2.6.2",
+    "ethers": "6.17.0",
     "jsqr": "^1.4.0",
     "pngjs": "^7.0.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "vite": "^7.3.6"
   }
 }

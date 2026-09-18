@@ -1,5 +1,6 @@
 import { icon } from "./panel-ui.js";
-import { SUPPORT_WALLET_ADDRESS } from "./shared/support.js";
+import { SUPPORT_WALLET_ADDRESS, supportCheckoutUrl, supportMetaMaskUrl } from "./shared/support.js";
+import { initSupportAmount } from "./support-amount.js";
 
 export function initSupportDialog() {
     const trigger = document.getElementById("support");
@@ -8,10 +9,29 @@ export function initSupportDialog() {
     const address = document.getElementById("support-address");
     const copy = document.getElementById("copy-support-address");
     const status = document.getElementById("support-copy-status");
+    const instructions = document.getElementById("support-instructions");
+    const pay = document.getElementById("support-pay");
+    const mobile = document.getElementById("support-mobile");
+    let amount = null;
 
-    trigger.prepend(icon("coffee"));
+    trigger.prepend(icon("code"));
     close.append(icon("close"));
     address.value = SUPPORT_WALLET_ADDRESS;
+    initSupportAmount(document.getElementById("support-amount"), (value) => {
+        amount = value;
+        status.textContent = "";
+        instructions.textContent = amount
+            ? `Scan or copy the address, then send ${amount.amount} USDC on Base. This QR contains the address only; enter the amount in your wallet.`
+            : "Choose an amount to continue. You can also copy the address and enter an amount in your wallet.";
+        const checkout = supportCheckoutUrl(amount?.amount);
+        pay.hidden = !checkout;
+        if (checkout) pay.href = checkout;
+        else pay.removeAttribute("href");
+        const mobileUrl = supportMetaMaskUrl(amount?.amount);
+        mobile.hidden = !mobileUrl;
+        if (mobileUrl) mobile.href = mobileUrl;
+        else mobile.removeAttribute("href");
+    });
 
     trigger.addEventListener("click", () => {
         status.textContent = "";
@@ -27,7 +47,7 @@ export function initSupportDialog() {
         status.textContent = "";
         try {
             await navigator.clipboard.writeText(SUPPORT_WALLET_ADDRESS);
-            status.textContent = "Address copied. Send USDC on Base.";
+            status.textContent = amount ? `Address copied. Send ${amount.amount} USDC on Base.` : "Address copied. Send USDC on Base.";
         }
         catch {
             // Clipboard access can be denied without adding an extension permission.
