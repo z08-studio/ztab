@@ -1,5 +1,5 @@
 import { icon } from "./panel-ui.js";
-import { SUPPORT_WALLET_ADDRESS, supportCheckoutUrl, supportMetaMaskUrl } from "./shared/support.js";
+import { SUPPORT_WALLET_ADDRESS, supportCheckoutUrl } from "./shared/support.js";
 import { initSupportAmount } from "./support-amount.js";
 
 export function initSupportDialog() {
@@ -11,7 +11,6 @@ export function initSupportDialog() {
     const status = document.getElementById("support-copy-status");
     const instructions = document.getElementById("support-instructions");
     const pay = document.getElementById("support-pay");
-    const mobile = document.getElementById("support-mobile");
     let amount = null;
 
     trigger.prepend(icon("code"));
@@ -27,10 +26,6 @@ export function initSupportDialog() {
         pay.hidden = !checkout;
         if (checkout) pay.href = checkout;
         else pay.removeAttribute("href");
-        const mobileUrl = supportMetaMaskUrl(amount?.amount);
-        mobile.hidden = !mobileUrl;
-        if (mobileUrl) mobile.href = mobileUrl;
-        else mobile.removeAttribute("href");
     });
 
     trigger.addEventListener("click", () => {

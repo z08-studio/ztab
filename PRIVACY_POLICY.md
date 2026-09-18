@@ -38,11 +38,11 @@ When the extension API omits display names, **Show display names** requests Chro
 
 ## Optional support
 
-The **Support my coding** dialog displays a bundled QR code and a public wallet address for USDC on Base. Amount choices and custom input stay local. **Copy address** writes the address to your clipboard only when selected. **Open MetaMask mobile** opens a MetaMask link containing the public recipient, Base USDC contract, and selected amount. The extension does not connect to a wallet or submit a transaction.
+The **Support my coding** dialog offers Base USDC amounts and a manual fallback with a bundled QR code and public wallet address. Amount choices and custom input stay local until **Connect wallet** is selected. **Copy address** writes the address to your clipboard only when selected. The extension does not connect to a wallet or submit a transaction.
 
-When an optional support-page URL is configured, **Continue with wallet** opens that page with only the selected amount. The support page loads Reown AppKit after **Connect wallet** is selected. Wallet connection and RPC providers then process the connection and payment requests; a connected wallet may expose its public address, network, and balances to the SDK, and the SDK may retain the connection session in browser storage. Optional AppKit analytics, email/social login, swaps, and onramps are disabled. No tab titles, browsing URLs, Saved entries, or diagnostics are passed to the support page.
+**Connect wallet** in the extension opens the hosted support page with only the selected amount. The support page loads Reown AppKit after its **Connect wallet** button is selected. Wallet connection and RPC providers then process the connection and payment requests; a connected wallet may expose its public address, network, and balances to the SDK, and the SDK may retain the connection session in browser storage. Optional AppKit analytics, email/social login, swaps, and onramps are disabled. No tab titles, browsing URLs, Saved entries, or diagnostics are passed to the support page.
 
-The support page requests a USDC transfer only after **Send** is selected, and the user's wallet must approve it. Confirmed transfers and their addresses and amounts are public on the blockchain. Ztab does not receive private keys or seed phrases. A returned transaction ID is linked to BaseScan; the page does not monitor confirmation. The standalone support page requires separate configuration and deployment before the extension's checkout link is enabled.
+The support page requests a USDC transfer only after **Send** is selected, and the user's wallet must approve it. Confirmed transfers and their addresses and amounts are public on the blockchain. Ztab does not receive private keys or seed phrases. A returned transaction ID is linked to BaseScan; the page does not monitor confirmation.
 
 ## Diagnostics
 

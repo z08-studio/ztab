@@ -936,11 +936,19 @@ input::placeholder {
     text-align: center;
 }
 
-.support-mobile {
-    display: block;
-    margin: 10px 0 14px;
+.support-manual {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.support-manual summary {
     color: var(--accent);
-    text-align: center;
+    cursor: pointer;
+}
+
+.support-manual[open] summary {
+    margin-bottom: 12px;
 }
 
 .support-thanks {

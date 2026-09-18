@@ -5,7 +5,7 @@ import jsQR from "jsqr";
 import { PNG } from "pngjs";
 import {
   parseSupportAmount, SUPPORT_WALLET_ADDRESS, SUPPORT_USDC_ADDRESS,
-  supportCheckoutUrl, supportPaymentUri, supportMetaMaskUrl,
+  supportCheckoutUrl, supportPaymentUri,
 } from "../src/shared/support.js";
 
 test("the bundled support QR decodes to the same recipient as the copy button", () => {
@@ -29,20 +29,21 @@ test("invalid and overflowing amounts cannot create a payment request", () => {
   for (const value of ["", "0", "0.000000", "-3", "1e6", "1,5", "1.0000001", "3.", ".5", "NaN", "Infinity", "9".repeat(73)]) {
     assert.equal(parseSupportAmount(value), null, value);
     assert.equal(supportPaymentUri(value), "", value);
-    assert.equal(supportMetaMaskUrl(value), "", value);
+    assert.equal(supportCheckoutUrl(value), "", value);
   }
   const overflow = ((1n << 256n) / 1_000_000n + 1n).toString();
   assert.equal(parseSupportAmount(overflow), null);
 });
 
-test("wallet links request native Base USDC with the exact recipient and atomic amount", () => {
+test("payment QR requests native Base USDC with the exact recipient and atomic amount", () => {
   const request = `${SUPPORT_USDC_ADDRESS}@8453/transfer?address=${SUPPORT_WALLET_ADDRESS}&uint256=1234567`;
   assert.equal(supportPaymentUri("1.234567"), `ethereum:${request}`);
-  assert.equal(supportMetaMaskUrl("1.234567"), `https://link.metamask.io/send/${request}`);
 });
 
-test("checkout is unavailable until configured and passes only a normalized amount", () => {
-  assert.equal(supportCheckoutUrl("5"), "");
+test("checkout opens the hosted wallet page and passes only a normalized amount", () => {
+  assert.equal(supportCheckoutUrl("5"), "https://z08-studio.github.io/ztab/?amount=5");
+  assert.equal(supportCheckoutUrl("1.234567"), "https://z08-studio.github.io/ztab/?amount=1.234567");
+  assert.equal(supportCheckoutUrl("5", ""), "");
   for (const url of ["javascript:alert(1)", "http://example.com", "https://user:password@example.com", "not a URL"]) {
     assert.equal(supportCheckoutUrl("5", url), "");
   }

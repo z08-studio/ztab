@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 import brandIcon from "../icons/icon48.png";
 import favicon from "../icons/icon32.png";
 import { initSupportAmount } from "../src/support-amount.js";
-import { SUPPORT_DEFAULT_AMOUNT, SUPPORT_WALLET_ADDRESS, supportMetaMaskUrl, supportPaymentUri } from "../src/shared/support.js";
+import { SUPPORT_DEFAULT_AMOUNT, SUPPORT_WALLET_ADDRESS, supportPaymentUri } from "../src/shared/support.js";
 
 const amountFields = document.getElementById("support-amount");
 const connect = document.getElementById("connect-wallet");
@@ -13,7 +13,6 @@ const transactionLink = document.getElementById("transaction");
 const manual = document.getElementById("manual-payment");
 const manualInstructions = document.getElementById("manual-instructions");
 const qr = document.getElementById("payment-qr");
-const mobile = document.getElementById("metamask-mobile");
 const address = document.getElementById("recipient");
 const copy = document.getElementById("copy-address");
 const copyStatus = document.getElementById("copy-status");
@@ -48,11 +47,8 @@ initSupportAmount(amountFields, (value) => {
     amount = value;
     copyStatus.textContent = "";
     qr.hidden = !amount;
-    mobile.hidden = !amount;
-    mobile.removeAttribute("href");
     manualInstructions.textContent = amount ? `${amount.amount} USDC on Base` : "Choose an amount above.";
     if (amount) {
-        mobile.href = supportMetaMaskUrl(amount.amount);
         // This is a payment request, not an address-only QR: it includes Base,
         // Circle's USDC contract, the recipient, and the exact atomic amount.
         QRCode.toCanvas(qr, supportPaymentUri(amount.amount), { width: 224, margin: 4, errorCorrectionLevel: "M" })

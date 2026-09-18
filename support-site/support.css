@@ -69,14 +69,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status { overflow-wrap: anywhere; }
 .status[data-error="true"] { color: var(--danger); }
 .status:empty { display: none; }
-.transaction, .mobile-link { color: var(--accent); overflow-wrap: anywhere; }
+.transaction { color: var(--accent); overflow-wrap: anywhere; }
 .transaction { display: block; margin: 12px 0; }
 
 details { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
 summary { color: var(--accent); cursor: pointer; }
 .manual-instructions { text-align: center; overflow-wrap: anywhere; font-weight: 600; }
 .payment-qr { display: block; width: min(100%, 224px); height: auto; margin: 16px auto; border-radius: 8px; }
-.mobile-link { display: block; text-align: center; margin: 14px 0; }
 .address-label { display: block; margin: 12px 0 5px; color: var(--muted); font-size: 12px; }
 textarea {
     display: block;
