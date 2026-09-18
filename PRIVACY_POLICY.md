@@ -10,7 +10,7 @@ Ztab, previously named TabSpan, runs entirely on your device.
 
 ## Local data storage
 
-- Ztab stores the pinned-site origin list, synchronization metadata, and the **Show pinned tabs** preference in `chrome.storage.local`.
+- Ztab stores the pinned-site origin list, synchronization metadata, the **Show pinned tabs** preference, and whether you dismissed the toolbar pinning tip in `chrome.storage.local`.
 - Ztab also stores Saved page titles, full HTTP(S) URLs, save dates, collections, and group names/colors in `chrome.storage.local`. Saving is an explicit action; Ztab does not create a browsing-history archive or read your Chrome bookmarks.
 - Group membership stores tab IDs and the last active member locally, tied to a random browser-session identifier in `chrome.storage.session`. Membership is cleared after a browser restart, extension reload, or update, so reused tab IDs cannot attach unrelated pages to old groups. Group names and Saved pages remain.
 - The sort preference is stored locally. Recent sorting uses Chrome's last-accessed timestamps and locally stored tab IDs with focused-visit timestamps. These visit records are cleared with the browser-session identifier and pruned when tabs close or become pinned; they contain no page titles or URLs and do not require browsing-history access.

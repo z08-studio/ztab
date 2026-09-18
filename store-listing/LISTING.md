@@ -1,6 +1,6 @@
 # Ztab store listing
 
-Prepared English copy for the **2.0.0** update to the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
+Prepared English copy for the **2.1.0** update to the existing Chrome Web Store item, following the published 2.0.0 release. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the 2.1.0 listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
 
 ## Product name
 
@@ -67,7 +67,7 @@ Ztab requires no account and uses no external server. Pinned site origins, prefe
 
 GOOD TO KNOW
 
-Ztab 2.0 requires Chrome 123 or later.
+Ztab requires Chrome 123 or later.
 
 Ztab works between windows on the same computer and in the same Chrome profile. Regular tabs stay in their windows until you move or merge them. Only pinned apps are synchronized automatically; different pages on one site count as one pinned app. Existing pins keep their current page, while newly created pinned copies open the site's root URL. Use Unpin to remove a pinned app everywhere, because closing a pinned copy may cause it to return during synchronization.
 
@@ -79,7 +79,19 @@ JOIN THE COMMUNITY
 
 Have a question, found a bug, or have an idea for Ztab? Join our Telegram community: https://t.me/z08_studio
 
-## Release notes — 2.0.0
+## Release notes — 2.1.0
+
+Ztab 2.1 refreshes the app's identity and makes it easier to keep Ztab within reach.
+
+• Introduces the indigo Tab Hub icon and a consistent Ztab identity
+• Improves the 16px and 32px toolbar icons for clearer recognition
+• Adds a toolbar pinning tip that disappears when Ztab is pinned and remembers when you dismiss it
+• Adds an optional Support my coding dialog with a QR code and address copying for USDC on Base
+• Refreshes Chrome Web Store screenshots and promotional artwork
+
+This update keeps the same permissions and Chrome 123 minimum. Your Saved library, group definitions, shared pinned sites, and preferences remain in your local profile. As in 2.0, live group membership, manual tab order, and recent-use records reset when the extension updates. The support dialog does not connect a wallet or initiate a payment.
+
+## Previous release notes — 2.0.0
 
 Ztab 2.0 brings inline groups, batch actions, and an independent Saved library to the side panel. Manage tabs across windows, keep shared pinned apps ready, and navigate with familiar keyboard shortcuts.
 

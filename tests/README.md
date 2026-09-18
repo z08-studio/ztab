@@ -27,6 +27,18 @@ The tests cover:
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
+## 2.1 release review and upgrade
+
+Verified on 2026-09-18 against the prepared **2.1.0** package. The published 2.0.0 CRX matches all 41 runtime files at `9a79758` (normalizing the Store-injected manifest `update_url`); this is the release baseline, not the older `v1.1.1` GitHub tag. See [the release guide](../CHROME_WEB_STORE.md) for checksums and the final change list.
+
+`pnpm package` passes **152 tests**, checks packaged JavaScript and manifest entries, and produces a ZIP with 45 runtime files matching `dist-store/` byte-for-byte. `pnpm assets:store` succeeds with package-derived 2.1 labels. Source product captures remain unchanged; generated dimensions, RGB encoding, the Store cover and Store/social overview sheets were checked.
+
+In isolated Chrome for Testing 153 on macOS, loading the downloaded 2.0 runtime and replacing it at the same path with 2.1 preserved the extension ID, Saved records, collection IDs, group definitions, canonical pinned origins, hidden-pins preference, and manual-sort preference. Two windows retained their pinned copies. Session membership reset as documented. Developer mode was enabled for the unpacked reload.
+
+The native **Pin to toolbar** setting hides/restores the new tip. Keyboard dismissal focuses Search, synchronizes to another window, and survives a page reload and full browser restart. Saved data survives the restart too; the restarted panel logs no console errors or warnings. The support dialog fits 280px, 320px and 420px in both themes; Escape restores footer focus. Scoped clipboard stubs checked the exact copied address and the permission-denied fallback with all 42 characters selected, preserving the system clipboard. This run does not repeat the earlier real system-clipboard check or perform a transfer.
+
+Local before/after storage evidence and interface captures are under `output/playwright/release-review/` and are excluded from the package. Chrome 123–129, Windows/Linux, native shortcut/window-merge regressions, and Store-delivered upgrades were not rerun for this preparation; the underlying commands and merge/sync implementations are unchanged from 2.0.
+
 ## Toolbar pinning banner
 
 Verified on 2026-09-18 with the actual extension page in an isolated Chrome for Testing 153 profile: an unpinned action shows the banner; Chrome's **Pin to toolbar** toggle hides it immediately, and unpinning shows it again until dismissed. Dismissing with Enter moves focus to Search and hides the banner in another browser window. The local dismissal survives page reloads, a full browser restart, and reloading the unpacked extension. Light and dark layouts fit 280px, 320px, and 420px widths without horizontal overflow. References: [light banner](../docs/screenshots/toolbar-pin-banner.png) and [dark banner](../docs/screenshots/toolbar-pin-banner-dark.png).
