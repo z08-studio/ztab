@@ -1,5 +1,3 @@
-@import url("./support-amount.css");
-
 :root {
     color-scheme: light dark;
     --surface: light-dark(#fcfbfd, #202126);
@@ -927,29 +925,6 @@ input::placeholder {
 }
 
 .support-heading .icon-button { flex-shrink: 0; }
-
-.support-pay {
-    display: block;
-    padding: 9px 12px;
-    margin: 10px 0;
-    text-decoration: none;
-    text-align: center;
-}
-
-.support-manual {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
-}
-
-.support-manual summary {
-    color: var(--accent);
-    cursor: pointer;
-}
-
-.support-manual[open] summary {
-    margin-bottom: 12px;
-}
 
 .support-thanks {
     margin: 3px 0 12px;

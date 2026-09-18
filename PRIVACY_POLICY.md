@@ -38,11 +38,7 @@ When the extension API omits display names, **Show display names** requests Chro
 
 ## Optional support
 
-The **Support my coding** dialog offers Base USDC amounts and a manual fallback with a bundled QR code and public wallet address. Amount choices and custom input stay local until **Connect wallet** is selected. **Copy address** writes the address to your clipboard only when selected. The extension does not connect to a wallet or submit a transaction.
-
-**Connect wallet** in the extension opens the hosted support page with only the selected amount. The support page loads Reown AppKit after its **Connect wallet** button is selected. Wallet connection and RPC providers then process the connection and payment requests; a connected wallet may expose its public address, network, and balances to the SDK, and the SDK may retain the connection session in browser storage. Optional AppKit analytics, email/social login, swaps, and onramps are disabled. No tab titles, browsing URLs, Saved entries, or diagnostics are passed to the support page.
-
-The support page requests a USDC transfer only after **Send** is selected, and the user's wallet must approve it. Confirmed transfers and their addresses and amounts are public on the blockchain. Ztab does not receive private keys or seed phrases. A returned transaction ID is linked to BaseScan; the page does not monitor confirmation.
+The **Support my coding** dialog displays a bundled QR code and a public wallet address for USDC on Base. **Copy address** writes that address to your clipboard only when selected. Ztab does not connect to a wallet, initiate or monitor payments, or send data to a payment service. Transfers are made separately in your own wallet.
 
 ## Diagnostics
 

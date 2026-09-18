@@ -165,7 +165,7 @@ Only regular `http://` and `https://` pages are synchronized. Chrome internal pa
 
 ## Private and local by design
 
-Ztab's tab-management features require no account and use no external server.
+Ztab requires no account and uses no external server.
 
 - Your pinned-site list, synchronization metadata, and panel preference are stored in Chrome's local extension storage.
 - Saved titles, full URLs, dates, collections, and group definitions are stored locally. Group membership and local tab ordering are valid only for the current browser session.
@@ -178,9 +178,7 @@ Read the full [privacy policy](PRIVACY_POLICY.md).
 
 If something is not working as expected, open a [GitHub issue](https://github.com/boundless-forest/ztab/issues). Include the steps that caused the problem and, when relevant, diagnostics copied from the extension options page. Diagnostics may contain window and tab IDs, site origins, and window geometry, but not tab titles or full URLs.
 
-The footer's **Support my coding** button (shown as **Support** in narrow panels) helps cover the AI API credits used to build Ztab. Choose **3, 5, or 10 USDC**, or enter a custom amount. **Connect wallet** opens the payment page with that amount. **Scan or copy address** expands a manual fallback; the extension's QR contains only the address.
-
-The [support page](support-site/README.md) uses Reown AppKit for desktop wallets and mobile WalletConnect connections. Ztab's public Reown Project ID is included in code, so production builds need no local environment file. The user chooses a wallet on that page and approves any payment in their wallet. Direct MetaMask mobile payment links are not used because desktop MetaMask can intercept them and show an unsupported-page error.
+The footer's **Support my coding** button (shown as **Support** in narrow panels) helps cover the AI API credits used to build Ztab. It displays a QR code and public wallet address. Scan or copy the address, choose **Base** and **USDC** in your own wallet, and send any amount. The QR contains the address only. Everything in the dialog is local; there is no wallet connection or payment website.
 
 To change the recipient, update `src/shared/support.js` and run `pnpm assets:support` to regenerate the bundled QR. The test suite decodes the image and checks that it matches the address used by the copy button.
 
