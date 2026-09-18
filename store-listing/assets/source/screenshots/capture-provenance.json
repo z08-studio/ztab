@@ -1,0 +1,86 @@
+{
+  "captureDate": "2026-09-17",
+  "source": "User Chrome with installed Ztab 2.0; Shottr capture; privacy-cropped sources from Xiaohongshu preparation",
+  "websites": [
+    "Wikipedia",
+    "NASA",
+    "Python",
+    "Rust",
+    "MDN"
+  ],
+  "processing": "Crop Chrome native header when present; preserve product pixels; scale proportionally only",
+  "captures": [
+    {
+      "file": "side-panel-raw.png",
+      "width": 1090,
+      "height": 944,
+      "source": "01-真实截图.png",
+      "crop": {
+        "x": 0,
+        "y": 76,
+        "width": 1090,
+        "height": 944
+      }
+    },
+    {
+      "file": "pinned-tabs-raw.png",
+      "width": 1090,
+      "height": 544,
+      "source": "02-真实截图.png",
+      "crop": {
+        "x": 0,
+        "y": 76,
+        "width": 1090,
+        "height": 544
+      }
+    },
+    {
+      "file": "keyboard-raw.png",
+      "width": 1020,
+      "height": 1030,
+      "source": "03-真实截图.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 1020,
+        "height": 1030
+      }
+    },
+    {
+      "file": "groups-bulk-raw.png",
+      "width": 1090,
+      "height": 760,
+      "source": "05-真实截图.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 1090,
+        "height": 760
+      }
+    },
+    {
+      "file": "bulk-toolbar-raw.png",
+      "width": 1090,
+      "height": 170,
+      "source": "05-底部操作栏.png",
+      "crop": {
+        "x": 0,
+        "y": 0,
+        "width": 1090,
+        "height": 170
+      }
+    },
+    {
+      "file": "saved-raw.png",
+      "width": 1090,
+      "height": 704,
+      "source": "04-真实截图.png",
+      "crop": {
+        "x": 0,
+        "y": 76,
+        "width": 1090,
+        "height": 704
+      }
+    }
+  ]
+}

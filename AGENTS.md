@@ -5,6 +5,7 @@
 - Product name: **Ztab** (capital Z, lowercase tab); Chrome Web Store name: **Ztab: Tab Manager**.
 - Z-series product names begin with a capital **Z**, such as **Zdraft** and **Ztab**. Use **Ztab** in displayed names and product copy; keep technical identifiers, package names, filenames, and URLs unchanged.
 - Positioning: **Another excellent tab manager for Chrome.**
+- The approved logo is **B1, Tab Hub, in P2 indigo** (`#493567` and `#A996CC`), with vector sources in `store-listing/source/`. Replacement slogan candidates are in `store-listing/SLOGANS.md`; preview wording is not a final selection.
 - Give equal weight to three capabilities: managing tabs across windows, keeping pinned tabs across windows, and keyboard shortcuts with thoughtful interactions.
 - Describe implemented behavior. Do not imply cross-device sync, saved sessions, or shortcuts that the product does not provide.
 - The former names TabSpan and PinAllWindows may remain in migration history and compatibility identifiers. Keep existing storage keys and runtime message values unless a separate migration is explicitly planned.

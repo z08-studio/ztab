@@ -10,6 +10,8 @@ Ztab: Tab Manager
 
 Another excellent tab manager for Chrome.
 
+The replacement slogan is under review in [SLOGANS.md](SLOGANS.md). The refreshed promotional artwork previews candidate A; the wording above and in the detailed description stays unchanged until a candidate is selected.
+
 ## Summary
 
 Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.
