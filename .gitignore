@@ -2,6 +2,9 @@ node_modules/
 .pnpm-store/
 .vscode/
 dist-store/
+dist-support/
+support-site/.env
+support-site/.env.local
 TabSpan-*.zip
 ztab-*.zip
 output/playwright/

@@ -1,3 +1,5 @@
+@import url("./support-amount.css");
+
 :root {
     color-scheme: light dark;
     --surface: light-dark(#fcfbfd, #202126);
@@ -866,14 +868,143 @@ input::placeholder {
 
 .summary {
     margin: 0;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .footer-actions {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1 0 0;
     gap: 5px;
     align-items: center;
+    justify-content: flex-end;
+}
+
+.support-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 3px 5px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.support-button:hover {
+    background: var(--accent-soft);
+}
+
+.support-label-short {
+    display: none;
+}
+
+@media (max-width: 380px) {
+    .support-label { display: none; }
+    .support-label-short { display: inline; }
+}
+
+.dialog.support-dialog {
+    width: min(340px, calc(100vw - 24px));
+}
+
+.support-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.support-heading .dialog-title {
+    margin: 0;
+}
+
+.support-heading .icon-button { flex-shrink: 0; }
+
+.support-pay {
+    display: block;
+    padding: 9px 12px;
+    margin: 10px 0;
+    text-decoration: none;
+    text-align: center;
+}
+
+.support-mobile {
+    display: block;
+    margin: 10px 0 14px;
+    color: var(--accent);
+    text-align: center;
+}
+
+.support-thanks {
+    margin: 3px 0 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.support-network {
+    margin: 0 0 12px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.support-network span {
+    margin: 0 5px;
+    color: var(--muted);
+}
+
+.support-qr {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+.support-address-label {
+    margin: 12px 0 5px;
+}
+
+.support-address {
+    display: block;
+    width: 100%;
+    padding: 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    resize: none;
+    overflow-wrap: anywhere;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, monospace;
+    color: var(--text);
+    background: var(--soft);
+}
+
+.support-address:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.support-copy {
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 10px;
+}
+
+.support-copy-status {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.support-copy-status:empty {
+    display: none;
 }
 
 .settings-link {

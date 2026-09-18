@@ -36,6 +36,14 @@ Ztab's own Groups are virtual groups of open tabs. Creating or editing one does 
 
 When the extension API omits display names, **Show display names** requests Chrome's optional **Manage windows on all your displays** browser permission (`window-management`). It lets Ztab read system display labels through the Window Management API. Refreshing the panel does not request this permission automatically; declining leaves numbered labels available.
 
+## Optional support
+
+The **Support my coding** dialog displays a bundled QR code and a public wallet address for USDC on Base. Amount choices and custom input stay local. **Copy address** writes the address to your clipboard only when selected. **Open MetaMask mobile** opens a MetaMask link containing the public recipient, Base USDC contract, and selected amount. The extension does not connect to a wallet or submit a transaction.
+
+When an optional support-page URL is configured, **Continue with wallet** opens that page with only the selected amount. The support page loads Reown AppKit after **Connect wallet** is selected. Wallet connection and RPC providers then process the connection and payment requests; a connected wallet may expose its public address, network, and balances to the SDK, and the SDK may retain the connection session in browser storage. Optional AppKit analytics, email/social login, swaps, and onramps are disabled. No tab titles, browsing URLs, Saved entries, or diagnostics are passed to the support page.
+
+The support page requests a USDC transfer only after **Send** is selected, and the user's wallet must approve it. Confirmed transfers and their addresses and amounts are public on the blockchain. Ztab does not receive private keys or seed phrases. A returned transaction ID is linked to BaseScan; the page does not monitor confirmation. The standalone support page requires separate configuration and deployment before the extension's checkout link is enabled.
+
 ## Diagnostics
 
 Recent synchronization diagnostics are kept in memory. Selecting **Copy diagnostics** in the options page copies them to your clipboard. They can include window and tab IDs, site origins, and window geometry, but not tab titles or full browsing URLs. Nothing is sent automatically; you choose whether to share the copied diagnostics in a support request.

@@ -165,7 +165,7 @@ Only regular `http://` and `https://` pages are synchronized. Chrome internal pa
 
 ## Private and local by design
 
-Ztab requires no account and uses no external server.
+Ztab's tab-management features require no account and use no external server.
 
 - Your pinned-site list, synchronization metadata, and panel preference are stored in Chrome's local extension storage.
 - Saved titles, full URLs, dates, collections, and group definitions are stored locally. Group membership and local tab ordering are valid only for the current browser session.
@@ -177,6 +177,12 @@ Read the full [privacy policy](PRIVACY_POLICY.md).
 ## Support
 
 If something is not working as expected, open a [GitHub issue](https://github.com/boundless-forest/ztab/issues). Include the steps that caused the problem and, when relevant, diagnostics copied from the extension options page. Diagnostics may contain window and tab IDs, site origins, and window geometry, but not tab titles or full URLs.
+
+The footer's **Support my coding** button (shown as **Support** in narrow panels) helps cover the AI API credits used to build Ztab. Choose **3, 5, or 10 USDC**, or enter a custom amount. **Open MetaMask mobile** prepares a Base USDC transfer with the selected amount. You can also scan or copy the address and enter the amount in your own wallet; the extension's QR contains only the address.
+
+An optional [support page](support-site/README.md) integrates Reown AppKit for desktop wallets and mobile WalletConnect connections. Ztab's public Reown Project ID is included in code, so production builds need no local environment file. Deploy the page to an HTTPS host; once its verified URL is configured, the extension shows **Continue with wallet**. The user approves any payment in their wallet.
+
+To change the recipient, update `src/shared/support.js` and run `pnpm assets:support` to regenerate the bundled QR. The test suite decodes the image and checks that it matches the address used by the copy button.
 
 ## License
 

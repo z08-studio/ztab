@@ -50,12 +50,44 @@
       <footer class="summary-footer">
         <p id="summary" class="summary">Loading tabs…</p>
         <span id="private-label" class="private-label" hidden>Private</span>
+        <button id="support" class="support-button" type="button" aria-label="Support my coding" aria-haspopup="dialog" aria-controls="support-dialog" title="Support my coding">
+          <span class="support-label">Support my coding</span><span class="support-label-short" aria-hidden="true">Support</span>
+        </button>
         <span class="footer-actions">
           <button id="keyboard-help" class="icon-button" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"></button>
           <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
         </span>
       </footer>
     </main>
+    <dialog id="support-dialog" class="dialog support-dialog" aria-labelledby="support-title" aria-describedby="support-instructions">
+      <div class="support-heading">
+        <h2 id="support-title" class="dialog-title">Help cover my AI coding costs</h2>
+        <button id="close-support" class="icon-button" type="button" aria-label="Close support dialog" title="Close"></button>
+      </div>
+      <p class="support-thanks">Your support helps pay for the AI API credits I use to build and improve Ztab.</p>
+      <p class="support-network">USDC <span aria-hidden="true">·</span> Base</p>
+      <fieldset id="support-amount" class="support-amount">
+        <legend>Choose an amount</legend>
+        <div class="support-amount-options">
+          <label><input type="radio" name="support-amount" value="3" /><span>3 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="5" checked /><span>5 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="10" /><span>10 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="custom" /><span>Custom</span></label>
+        </div>
+        <label class="support-custom" hidden>Amount in USDC
+          <input type="text" inputmode="decimal" maxlength="80" placeholder="Enter amount" autocomplete="off" aria-describedby="support-amount-error" />
+        </label>
+        <p id="support-amount-error" class="support-amount-error" role="status" aria-live="polite"></p>
+      </fieldset>
+      <a id="support-pay" class="primary support-pay" target="_blank" rel="noopener noreferrer" hidden>Continue with wallet</a>
+      <a id="support-mobile" class="support-mobile" target="_blank" rel="noopener noreferrer" hidden>Open MetaMask mobile</a>
+      <img class="support-qr" src="icons/support-base-usdc.png" width="192" height="192" alt="QR code containing the wallet address below" />
+      <p id="support-instructions" class="dialog-help">Scan or copy the address, then send USDC on Base.</p>
+      <label class="field support-address-label" for="support-address">Base wallet address</label>
+      <textarea id="support-address" class="support-address" rows="2" readonly spellcheck="false"></textarea>
+      <button id="copy-support-address" class="primary support-copy" type="button">Copy address</button>
+      <p id="support-copy-status" class="support-copy-status" role="status" aria-live="polite"></p>
+    </dialog>
     <script type="module" src="src/tab-tree.js"></script>
   </body>
 </html>

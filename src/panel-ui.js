@@ -7,6 +7,7 @@ export function node(tag, className = "", text = "") {
 }
 
 const ICON_PATHS = {
+    code: "m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18",
     monitor: "M4 3h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM12 19v3M8 22h8",
     tabs: "M3 8h18M8 8v13M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z",
     groups: "m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5",

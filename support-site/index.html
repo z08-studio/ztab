@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="Help cover the AI API credits used to build and improve Ztab." />
+    <title>Support my coding · Ztab</title>
+    <link id="support-favicon" rel="icon" />
+    <link rel="stylesheet" href="./support.css" />
+  </head>
+  <body>
+    <main class="support-card">
+      <header>
+        <a class="brand" href="https://github.com/boundless-forest/ztab" rel="noopener noreferrer"><img id="brand-icon" width="24" height="24" alt="" />Ztab</a>
+        <span class="network">USDC · Base</span>
+      </header>
+      <h1>Support my coding</h1>
+      <p class="intro">Help cover the AI API credits I use to build and improve Ztab.</p>
+      <fieldset id="support-amount" class="support-amount">
+        <legend>Choose an amount</legend>
+        <div class="support-amount-options">
+          <label><input type="radio" name="support-amount" value="3" /><span>3 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="5" checked /><span>5 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="10" /><span>10 <small>USDC</small></span></label>
+          <label><input type="radio" name="support-amount" value="custom" /><span>Custom</span></label>
+        </div>
+        <label class="support-custom" hidden>Amount in USDC
+          <input type="text" inputmode="decimal" maxlength="80" placeholder="Enter amount" autocomplete="off" aria-describedby="support-amount-error" />
+        </label>
+        <p id="support-amount-error" class="support-amount-error" role="status" aria-live="polite"></p>
+      </fieldset>
+      <button id="connect-wallet" class="primary" type="button">Connect wallet</button>
+      <p id="wallet-account" class="wallet-account" hidden></p>
+      <button id="pay" class="primary" type="button" hidden>Send 5 USDC</button>
+      <p id="wallet-help" class="wallet-help">Use a browser wallet, or connect your phone by scanning the wallet connection QR.</p>
+      <p id="payment-status" class="status" role="status" aria-live="polite"></p>
+      <a id="transaction" class="transaction" target="_blank" rel="noopener noreferrer" hidden>View transaction on BaseScan</a>
+      <details id="manual-payment">
+        <summary>Scan or copy payment details</summary>
+        <p id="manual-instructions" class="manual-instructions"></p>
+        <canvas id="payment-qr" class="payment-qr" width="224" height="224" role="img" aria-label="Base USDC payment request QR"></canvas>
+        <p class="wallet-help">Scan with a wallet that supports payment requests. If it cannot read this QR, copy the address below and select USDC on Base.</p>
+        <a id="metamask-mobile" class="mobile-link" target="_blank" rel="noopener noreferrer">Open MetaMask mobile</a>
+        <label class="address-label" for="recipient">Recipient on Base</label>
+        <textarea id="recipient" rows="2" readonly spellcheck="false"></textarea>
+        <button id="copy-address" class="secondary" type="button">Copy address</button>
+        <p id="copy-status" class="status" role="status" aria-live="polite"></p>
+      </details>
+      <footer>Your wallet shows the amount and network fee before you confirm. Thank you for supporting Ztab.</footer>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
