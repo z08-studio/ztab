@@ -36,6 +36,10 @@ Ztab's own Groups are virtual groups of open tabs. Creating or editing one does 
 
 When the extension API omits display names, **Show display names** requests Chrome's optional **Manage windows on all your displays** browser permission (`window-management`). It lets Ztab read system display labels through the Window Management API. Refreshing the panel does not request this permission automatically; declining leaves numbered labels available.
 
+## Optional support
+
+The **Buy me a coffee** dialog displays a bundled QR code and a public wallet address for USDC on Base. **Copy address** writes that address to your clipboard only when selected. Ztab does not connect to a wallet, initiate or monitor payments, or send data to a payment service. Transfers are made separately in your wallet.
+
 ## Diagnostics
 
 Recent synchronization diagnostics are kept in memory. Selecting **Copy diagnostics** in the options page copies them to your clipboard. They can include window and tab IDs, site origins, and window geometry, but not tab titles or full browsing URLs. Nothing is sent automatically; you choose whether to share the copied diagnostics in a support request.

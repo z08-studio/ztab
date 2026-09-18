@@ -50,12 +50,29 @@
       <footer class="summary-footer">
         <p id="summary" class="summary">Loading tabs…</p>
         <span id="private-label" class="private-label" hidden>Private</span>
+        <button id="support" class="support-button" type="button" aria-label="Buy me a coffee" aria-haspopup="dialog" aria-controls="support-dialog" title="Buy me a coffee">
+          <span class="support-label">Buy me a coffee</span><span class="support-label-short" aria-hidden="true">Coffee</span>
+        </button>
         <span class="footer-actions">
           <button id="keyboard-help" class="icon-button" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"></button>
           <a href="options.html" target="_blank" rel="noopener" class="settings-link" aria-label="Ztab settings">Settings</a>
         </span>
       </footer>
     </main>
+    <dialog id="support-dialog" class="dialog support-dialog" aria-labelledby="support-title" aria-describedby="support-instructions">
+      <div class="support-heading">
+        <h2 id="support-title" class="dialog-title">Buy me a coffee</h2>
+        <button id="close-support" class="icon-button" type="button" aria-label="Close support dialog" title="Close"></button>
+      </div>
+      <p class="support-thanks">Thanks for supporting Ztab.</p>
+      <p class="support-network">USDC <span aria-hidden="true">·</span> Base</p>
+      <img class="support-qr" src="icons/support-base-usdc.png" width="192" height="192" alt="QR code containing the wallet address below" />
+      <p id="support-instructions" class="dialog-help">Scan or copy the address. Choose the Base network in your wallet and send any amount of USDC.</p>
+      <label class="field support-address-label" for="support-address">Base wallet address</label>
+      <textarea id="support-address" class="support-address" rows="2" readonly spellcheck="false"></textarea>
+      <button id="copy-support-address" class="primary support-copy" type="button">Copy address</button>
+      <p id="support-copy-status" class="support-copy-status" role="status" aria-live="polite"></p>
+    </dialog>
     <script type="module" src="src/tab-tree.js"></script>
   </body>
 </html>

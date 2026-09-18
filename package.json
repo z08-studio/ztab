@@ -4,12 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "assets:support": "node scripts/render-support-qr.mjs",
     "assets:store": "node scripts/render-store-assets.mjs",
     "package": "node scripts/package.mjs",
     "test": "node --test"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "pngjs": "^7.0.0"
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4"
   }
 }

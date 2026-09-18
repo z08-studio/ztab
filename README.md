@@ -178,6 +178,10 @@ Read the full [privacy policy](PRIVACY_POLICY.md).
 
 If something is not working as expected, open a [GitHub issue](https://github.com/boundless-forest/ztab/issues). Include the steps that caused the problem and, when relevant, diagnostics copied from the extension options page. Diagnostics may contain window and tab IDs, site origins, and window geometry, but not tab titles or full URLs.
 
+The footer's **Buy me a coffee** button (shown as **Coffee** in narrow panels) opens an optional USDC tipping dialog. Scan or copy the wallet address, then choose **Base** and **USDC** in your own wallet. The QR contains the address only; it does not select a network or token. Any amount is welcome. Ztab displays the payment details locally and does not connect to wallets or submit transactions.
+
+To change the recipient, update `src/shared/support.js` and run `pnpm assets:support` to regenerate the bundled QR. The test suite decodes the image and checks that it matches the address used by the copy button.
+
 ## License
 
 Ztab is open-source software released under the [MIT License](LICENSE).

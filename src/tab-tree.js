@@ -5,6 +5,7 @@ import { resolveShowPinnedTabs } from "./shared/preferences.js";
 import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
 import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
 import { createDisplayReader } from "./display-info.js";
+import { initSupportDialog } from "./support.js";
 import { createTabDragController } from "./tab-drag.js";
 import { createTabSelection } from "./tab-selection.js";
 import { selectableTabs } from "./shared/tab-selection.js";
@@ -822,6 +823,7 @@ function sortMenu() {
 }
 
 async function init() {
+    initSupportDialog();
     dragController = createTabDragController({
         root: elements["workspace-panel"], list: elements["tab-list"], ungroupZone: elements["ungroup-drop"],
         canDrag: () => state.view === "tabs" && !selection.active() && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),

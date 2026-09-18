@@ -27,6 +27,12 @@ The tests cover:
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
+## Base USDC support verification
+
+Verified on 2026-09-18 in an isolated Chrome for Testing profile with the actual extension page: the footer opens the support dialog, the copied address exactly matches the configured recipient, and denied clipboard access selects the full address for manual copying. Escape closes the dialog and returns focus to the footer button. Light and dark layouts fit 280px, 320px, and 420px widths without horizontal overflow; the dialog scrolls at 320×400 so the copy action remains reachable.
+
+`pnpm package` passes all 145 tests and validates the packaged JavaScript. The QR test decodes the bundled image and checks it against the address used by the copy button. No wallet scan or real transfer was performed. UI references: [light support dialog](../docs/screenshots/base-usdc-support.png) and [dark support dialog](../docs/screenshots/base-usdc-support-dark.png).
+
 ## Final PR review
 
 Reviewed on 2026-09-16. `pnpm package` passes 143 tests and validates every packaged JavaScript file; `git diff --check` passes. The review fixed stale group-editor assignments, tab-replacement races during queued browser actions, overflowing destination menus, and keyboard focus loss after dialog saves. Obsolete helpers and screenshots from the superseded three-view layout were removed.
