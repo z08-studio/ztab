@@ -1,6 +1,6 @@
 # Ztab 2.0.0 release
 
-The product name is **Ztab**, with a capital Z to match the Z-series naming convention used by **Zdraft**. It is positioned as **Another excellent tab manager for Chrome.** The product has three equal pillars: managing tabs across windows, shared pinned tabs, and keyboard shortcuts with thoughtful interactions.
+The product name is **Ztab**, with a capital Z to match the Z-series naming convention used by **Zdraft**. It is positioned as **The last tab manager you’ll need.** The product has three equal pillars: managing tabs across windows, shared pinned tabs, and keyboard shortcuts with thoughtful interactions.
 
 Version **2.0.0** prepares a larger side-panel update: inline cross-window groups, batch actions, an independent Saved library, recent/manual sorting, website icons, and compact light/dark layouts. Existing pinned synchronization, window merging, and keyboard navigation remain part of the product.
 

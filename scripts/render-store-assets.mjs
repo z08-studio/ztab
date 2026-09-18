@@ -7,316 +7,355 @@ import { Resvg } from "@resvg/resvg-js";
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDirectory = join(projectRoot, "store-listing", "source");
 const finalDirectory = join(projectRoot, "store-listing", "assets", "final");
-const screenshotSourceDirectory = join(
-  projectRoot,
-  "store-listing",
-  "assets",
-  "source",
-  "screenshots",
-);
-const screenshotFinalDirectory = join(finalDirectory, "screenshots");
-const fontFiles = ["Medium", "Bold", "ExtraBold"].map((weight) =>
-  join(sourceDirectory, "fonts", `Manrope-${weight}.otf`),
-);
+const reviewDirectory = join(projectRoot, "store-listing", "assets", "review");
+const capturesRoot = join(projectRoot, "store-listing", "assets", "source", "screenshots");
+const fontFiles = [
+  "Manrope-Medium.otf",
+  "Manrope-Bold.otf",
+  "InstrumentSerif-Regular.ttf",
+  "ZtabEditorialSC-Semibold.ttf",
+].map((file) => join(sourceDirectory, "fonts", file));
+const cjkCoverage = JSON.parse(await readFile(join(sourceDirectory, "fonts", "cjk-coverage.json"), "utf8"));
+const cjkCharacters = new Set(cjkCoverage.characters);
+const colors = {
+  paper: "#F5F2ED",
+  ink: "#292535",
+  primary: "#493567",
+  secondary: "#A996CC",
+  muted: "#746E77",
+  line: "#D4CDC7",
+  lilac: "#E8E0ED",
+  night: "#382B47",
+  light: "#F5F0EA",
+  lightMuted: "#CFC3D8",
+  darkLine: "#6E5E7E",
+};
+const escapeXml = (value) => String(value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;");
+const dataUri = (buffer) => `data:image/png;base64,${buffer.toString("base64")}`;
 
-function renderSvg(svg, outputPath, width, { removeAlpha = false } = {}) {
+function text(x, y, value, { size = 22, fill = colors.ink, weight = 500, family = "Manrope", tracking = 0, anchor = "start" } = {}) {
+  return `<text x="${x}" y="${y}" fill="${fill}" font-family="${family}" font-size="${size}" font-weight="${weight}" letter-spacing="${tracking}" text-anchor="${anchor}">${escapeXml(value)}</text>`;
+}
+const label = (x, y, value, options = {}) => text(x, y, value, { size: 11, weight: 700, tracking: 1.6, fill: colors.muted, ...options });
+const headline = (x, y, value, options = {}) => text(x, y, value, { size: 88, weight: 400, family: "Instrument Serif", tracking: -0.8, ...options });
+function chinese(x, y, value, options = {}) {
+  const missing = [...value].filter((character) => !cjkCharacters.has(character));
+  if (missing.length) {
+    throw new Error(`Chinese artwork font is missing ${[...new Set(missing)].join("")}. Rebuild its subset as described in source/fonts/README.md.`);
+  }
+  return text(x, y, value, { size: 30, weight: 600, family: "Ztab Editorial SC", ...options });
+}
+const rule = (x1, y1, x2, y2, color = colors.line) => `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${color}"/>`;
+
+function page(width, height, content, background = colors.paper) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${background}"/>${content}</svg>`;
+}
+
+async function render(svg, path, width, { opaque = true } = {}) {
   const renderer = new Resvg(svg, {
     fitTo: { mode: "width", value: width },
-    font: {
-      fontFiles,
-      loadSystemFonts: false,
-      defaultFontFamily: "Manrope",
-    },
+    font: { fontFiles, loadSystemFonts: false, defaultFontFamily: "Manrope" },
   });
-
-  const rendered = renderer.render().asPng();
-  const output = removeAlpha
-    ? PNG.sync.write(PNG.sync.read(rendered), {
-        colorType: 2,
-        inputColorType: 6,
-      })
-    : rendered;
-
-  return writeFile(outputPath, output);
+  const png = renderer.render().asPng();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, opaque ? PNG.sync.write(PNG.sync.read(png), { colorType: 2, inputColorType: 6 }) : png);
 }
 
-function escapeDataUri(buffer) {
-  return `data:image/png;base64,${buffer.toString("base64")}`;
-}
-
-function windowMotif({ x, y, width, height, opacity = 1 }) {
-  return `<g transform="translate(${x} ${y})" opacity="${opacity}">
-    <rect width="${width}" height="${height}" rx="16" fill="#111C47" stroke="#506397" stroke-width="2"/>
-    <path d="M0 46H${width}" stroke="#506397" stroke-width="2"/>
-    <rect x="20" y="17" width="25" height="12" rx="4" fill="#FF846E"/>
-    <rect x="53" y="17" width="25" height="12" rx="4" fill="#A58AFF"/>
-    <rect x="86" y="17" width="25" height="12" rx="4" fill="#73DCC7"/>
-    <rect x="20" y="67" width="${width - 40}" height="20" rx="6" fill="#263765"/>
-    <rect x="20" y="101" width="${width - 78}" height="8" rx="4" fill="#506397"/>
-    <rect x="20" y="124" width="${width - 108}" height="8" rx="4" fill="#3C4E7F"/>
-  </g>`;
-}
-
-function promoSvg({ width, height, small, iconDataUri }) {
-  if (small) {
-    return `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-        <defs>
-          <linearGradient id="smallShade" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#070E2A"/>
-            <stop offset="1" stop-color="#1B2456"/>
-          </linearGradient>
-        </defs>
-        <rect width="${width}" height="${height}" fill="url(#smallShade)"/>
-        <circle cx="421" cy="0" r="134" fill="none" stroke="#A58AFF" stroke-opacity=".15" stroke-width="26"/>
-        <image href="${iconDataUri}" x="30" y="27" width="45" height="45"/>
-        <text x="87" y="61" fill="#F3F6FF" font-family="Manrope" font-size="33" font-weight="800" letter-spacing="-1">Ztab</text>
-        <text x="32" y="125" fill="#FFFFFF" font-family="Manrope" font-size="29" font-weight="800" letter-spacing="-.9">
-          <tspan x="32" dy="0">Another excellent</tspan>
-          <tspan x="32" dy="38" fill="#B7CCFF" font-size="27">tab manager for Chrome.</tspan>
-        </text>
-        <path d="M32 193H408" stroke="#677BAF" stroke-opacity=".35"/>
-        <g font-family="Manrope" font-size="15" font-weight="700" fill="#DCE6FF">
-          <circle cx="37" cy="228" r="4" fill="#FF846E"/><text x="50" y="233">Windows</text>
-          <circle cx="183" cy="228" r="4" fill="#A58AFF"/><text x="196" y="233">Pins</text>
-          <circle cx="293" cy="228" r="4" fill="#73DCC7"/><text x="306" y="233">Shortcuts</text>
-        </g>
-      </svg>`;
+const provenance = JSON.parse(await readFile(join(capturesRoot, "capture-provenance.json"), "utf8"));
+const captures = {};
+// Validate the approved, privacy-cropped sources before regenerating deliverables.
+for (const capture of provenance.captures) {
+  const buffer = await readFile(join(capturesRoot, capture.file));
+  const decoded = PNG.sync.read(buffer);
+  if (decoded.width !== capture.width || decoded.height !== capture.height) {
+    throw new Error(`${capture.file}: expected ${capture.width}×${capture.height}, got ${decoded.width}×${decoded.height}. Recheck capture provenance.`);
   }
+  captures[capture.file] = { ...capture, uri: dataUri(buffer) };
+}
+const slogan = JSON.parse(await readFile(join(sourceDirectory, "slogan.json"), "utf8"));
+if (slogan.status !== "approved" || slogan.lines.join(" ") !== slogan.text || slogan.heroLines.join(" ") !== slogan.text) {
+  throw new Error("Marketing artwork requires approved, consistent slogan text.");
+}
+const marks = {};
+for (const variant of ["wordmark", "wordmark-light"]) {
+  const svg = await readFile(join(sourceDirectory, `${variant}.svg`), "utf8");
+  marks[variant] = svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"));
+}
+// Crop only the original lockup's outer whitespace; its outlined geometry stays intact.
+function brand(x, y, width = 144, dark = false) {
+  return `<svg x="${x}" y="${y}" width="${width}" height="${width / 3}" viewBox="35 40 480 160">${marks[dark ? "wordmark-light" : "wordmark"]}</svg>`;
+}
 
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <defs>
-        <linearGradient id="marqueeShade" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#070E2A"/>
-          <stop offset="1" stop-color="#1B2456"/>
-        </linearGradient>
-      </defs>
-      <rect width="${width}" height="${height}" fill="url(#marqueeShade)"/>
-      <circle cx="1200" cy="58" r="250" fill="#A58AFF" opacity=".05"/>
-      <image href="${iconDataUri}" x="64" y="52" width="50" height="50"/>
-      <text x="128" y="90" fill="#F3F6FF" font-family="Manrope" font-size="37" font-weight="800" letter-spacing="-1.2">Ztab</text>
-      <text x="64" y="197" fill="#FFFFFF" font-family="Manrope" font-size="51" font-weight="800" letter-spacing="-1.7">
-        <tspan x="64" dy="0">Another excellent</tspan>
-        <tspan x="64" dy="66" fill="#B7CCFF">tab manager for Chrome.</tspan>
-      </text>
-      <text x="67" y="321" fill="#C6D4FA" font-family="Manrope" font-size="22" font-weight="500">A little more order. A lot less tab juggling.</text>
-      ${windowMotif({ x: 939, y: 62, width: 320, height: 179, opacity: 0.65 })}
-      ${windowMotif({ x: 875, y: 163, width: 320, height: 179 })}
-      <path d="M1217 242v27a30 30 0 0 1-30 30h-18" fill="none" stroke="#73DCC7" stroke-width="3" stroke-linecap="round"/>
-      <path d="m1178 290-10 9 10 9" fill="none" stroke="#73DCC7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+function captureImage(name, x, y, width, { border = true } = {}) {
+  const capture = captures[name];
+  const height = width * capture.height / capture.width;
+  return `${border ? `<rect x="${x - 1}" y="${y - 1}" width="${width + 2}" height="${height + 2}" fill="#FFFFFF" stroke="#BFB5C8"/>` : ""}
+    <image href="${capture.uri}" x="${x}" y="${y}" width="${width}" height="${height}"/>`;
+}
+
+function storeHeader(number, title, dark = false) {
+  return `${brand(48, 32, 144, dark)}
+    ${label(1232, 64, `${number} / ${title}`, { anchor: "end", fill: dark ? colors.lightMuted : colors.muted })}`;
+}
+
+function storeFooter(note, { dark = false, hero = false } = {}) {
+  const fill = dark ? colors.lightMuted : colors.muted;
+  return `${rule(48, 736, 1232, 736, dark ? colors.darkLine : colors.line)}
+    ${text(48, 768, hero ? "Ztab 2.0 / Built for Chrome" : slogan.text, { size: 14, fill })}
+    ${text(1232, 768, note, { size: 11, fill, anchor: "end" })}`;
+}
+
+const screenshots = [
+  {
+    file: "screenshot-01-side-panel.png",
+    title: "Across windows",
+    svg: () => page(1280, 800, `
+      ${storeHeader("01", "ACROSS WINDOWS")}
+      ${slogan.heroLines.map((line, i) => headline(52, 211 + i * 89, line, { size: 96, fill: i === 2 ? colors.primary : colors.ink })).join("")}
+      ${text(56, 469, "Every window, in view.", { size: 25, weight: 700 })}
+      ${text(56, 508, "Find, move and close your open tabs", { size: 18, fill: colors.muted })}
+      ${text(56, 536, "from one live side panel.", { size: 18, fill: colors.muted })}
+      ${rule(56, 586, 558, 586)}
+      ${["Windows", "Pinned tabs", "Keyboard"].map((value, i) => `${label(56 + i * 176, 624, `0${i + 1}`)}${text(56 + i * 176, 655, value, { size: 17, weight: 700, fill: colors.primary })}`).join("")}
+      ${rule(611, 144, 611, 695)}
+      ${captureImage("side-panel-raw.png", 650, 160, 584)}
+      ${label(650, 694, "PUBLIC PAGES / TWO CHROME WINDOWS", { size: 10, tracking: 1.2 })}
+      ${storeFooter("Across windows · Shared pins · Keyboard shortcuts", { hero: true })}
+    `),
+  },
+  {
+    file: "screenshot-02-pinned-tabs.png",
+    title: "Pinned tabs",
+    svg: () => page(1280, 800, `
+      ${storeHeader("02", "PINNED TABS", true)}
+      ${headline(52, 210, "Pin once.", { size: 110, fill: colors.light })}
+      ${text(758, 151, "Keep your everyday sites", { size: 24, fill: colors.light })}
+      ${text(758, 185, "in every window.", { size: 24, fill: colors.light })}
+      ${text(758, 225, "One pinned set. One Chrome profile.", { size: 14, fill: colors.lightMuted })}
+      ${captureImage("pinned-tabs-raw.png", 198, 268, 884)}
+      ${storeFooter("Wikipedia, pinned in two real windows", { dark: true })}
+    `, colors.night),
+  },
+  {
+    file: "screenshot-03-keyboard.png",
+    title: "Keyboard shortcuts",
+    svg: () => page(1280, 800, `
+      ${storeHeader("03", "KEYBOARD SHORTCUTS")}
+      ${headline(52, 218, "Stay in flow.", { size: 91 })}
+      ${text(56, 278, "The next page is a few keystrokes away.", { size: 21, fill: colors.muted })}
       ${[
-        { x: 64, color: "#FF846E", title: "Across windows", description: "View, move, and merge tabs across windows." },
-        { x: 495, color: "#A58AFF", title: "Pinned tabs, in sync", description: "Keep your pinned apps close in every window." },
-        { x: 926, color: "#73DCC7", title: "Made to move quickly", description: "Fast shortcuts. Thoughtful interactions." },
-      ].map(({ x, color, title, description }) => `
-        <rect x="${x}" y="410" width="410" height="101" rx="14" fill="#101B42" stroke="#344673"/>
-        <rect x="${x + 23}" y="435" width="5" height="48" rx="2.5" fill="${color}"/>
-        <text x="${x + 44}" y="453" fill="#F3F6FF" font-family="Manrope" font-size="22" font-weight="700" letter-spacing="-.4">${title}</text>
-        <text x="${x + 44}" y="482" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="500">${description}</text>
+        ["Open the panel", "Use your assigned Chrome shortcut."],
+        ["Find your page", "Search, then move with the arrow keys."],
+        ["Press Enter", "Switch straight to the focused tab."],
+      ].map(([title, detail], i) => `
+        ${rule(56, 349 + i * 112, 574, 349 + i * 112)}
+        ${label(56, 394 + i * 112, `0${i + 1}`, { fill: colors.primary })}
+        ${text(107, 395 + i * 112, title, { size: 24, weight: 700 })}
+        ${text(107, 426 + i * 112, detail, { size: 16, fill: colors.muted })}
       `).join("")}
-    </svg>`;
-}
-
-// Sources capture the actual native side-panel rendering surface through CDP.
-// Check its measured viewport before writing any assets; no browser frame is added.
-const screenshotCapture = {
-  width: 360,
-  height: 665,
-};
-
-function screenshotSvg({
-  screenshotDataUri, sourceWidth, sourceHeight, headlineLead,
-  headlineAccent, supporting, pillar, accent, steps = [], keyboard = false,
-  footnote, iconDataUri,
-}) {
-  const productScale = Math.min(520 / sourceWidth, 688 / sourceHeight);
-  const productWidth = sourceWidth * productScale;
-  const productHeight = sourceHeight * productScale;
-  const productX = 700 + (520 - productWidth) / 2;
-  const productY = 88 + (688 - productHeight) / 2;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
-    <defs>
-      <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#070E2A"/>
-        <stop offset="1" stop-color="#1B2456"/>
-      </linearGradient>
-      <filter id="shadow" x="-10%" y="-5%" width="120%" height="115%">
-        <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000619" flood-opacity=".4"/>
-      </filter>
-      <clipPath id="productClip"><rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16"/></clipPath>
-    </defs>
-    <rect width="1280" height="800" fill="url(#background)"/>
-    <circle cx="1190" cy="50" r="205" fill="${accent}" opacity=".055"/>
-    <circle cx="17" cy="14" r="58" fill="none" stroke="${accent}" stroke-width="18" opacity=".14"/>
-    <image href="${iconDataUri}" x="60" y="31" width="42" height="42"/>
-    <text x="116" y="60" fill="#DCE6FF" font-family="Manrope" font-size="25" font-weight="800" letter-spacing="-.6">Ztab</text>
-    <text x="1220" y="58" text-anchor="end" fill="#B9C9EC" font-family="Manrope" font-size="14" font-weight="700" letter-spacing="1.2">${pillar}</text>
-    <text x="60" y="177" fill="#FFFFFF" font-family="Manrope" font-size="50" font-weight="800" letter-spacing="-1.7">
-      <tspan x="60">${headlineLead}</tspan>
-      <tspan x="60" dy="64" fill="#B7CCFF">${headlineAccent}</tspan>
-    </text>
-    <text x="63" y="305" fill="#C6D4FA" font-family="Manrope" font-size="22" font-weight="500">
-      ${supporting.map((line, index) => `<tspan x="63" dy="${index ? 33 : 0}">${line}</tspan>`).join("")}
-    </text>
-    ${steps.map(({ key, title, detail }, index) => {
-      const y = 394 + index * 103;
-      return keyboard ? `
-        <rect x="62" y="${y}" width="158" height="62" rx="11" fill="#233158" stroke="#5A6E9F"/>
-        <path d="M76 ${y + 55}H206" stroke="#0D1737" stroke-width="2" stroke-linecap="round"/>
-        <text x="141" y="${y + 37}" text-anchor="middle" fill="#F3F6FF" font-family="Manrope" font-size="17" font-weight="700">${key}</text>
-        <text x="242" y="${y + 23}" fill="#F3F6FF" font-family="Manrope" font-size="21" font-weight="700">${title}</text>
-        <text x="242" y="${y + 50}" fill="#B9C9EC" font-family="Manrope" font-size="15" font-weight="500">${detail}</text>` : `
-        <rect x="62" y="${y + 5}" width="4" height="49" rx="2" fill="${accent}"/>
-        <text x="86" y="${y + 23}" fill="#F3F6FF" font-family="Manrope" font-size="22" font-weight="700">${title}</text>
-        <text x="86" y="${y + 54}" fill="#B9C9EC" font-family="Manrope" font-size="18" font-weight="500">${detail}</text>`;
-    }).join("")}
-    <text x="63" y="738" fill="#8FA5D3" font-family="Manrope" font-size="14" font-weight="500">${footnote}</text>
-    <rect x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}" rx="16" fill="#071033" filter="url(#shadow)"/>
-    <g clip-path="url(#productClip)">
-      <image href="${screenshotDataUri}" x="${productX}" y="${productY}" width="${productWidth}" height="${productHeight}"/>
-    </g>
-    <rect x="${productX + 0.5}" y="${productY + 0.5}" width="${productWidth - 1}" height="${productHeight - 1}" rx="15.5" fill="none" stroke="#8EA8EF" stroke-opacity=".45"/>
-  </svg>`;
-}
-
-const screenshotSpecs = [
-  {
-    source: "side-panel-raw.png",
-    output: "screenshot-01-side-panel.png",
-    headlineLead: "All your tabs.",
-    headlineAccent: "One clear view.",
-    supporting: ["Recent tabs first. Your windows together.", "Move, close, or merge without the tab hunt."],
-    pillar: "01 / ACROSS WINDOWS",
-    accent: "#FF846E",
-    steps: [
-      { title: "Across your windows", detail: "Open, move, close, or merge from one list." },
-      { title: "Recently used first", detail: "Keep active work near the top." },
-      { title: "Your order when you need it", detail: "Switch to Manual to arrange tabs yourself." },
-    ],
-    footnote: "Actual tabs from multiple Chrome windows.",
+      ${captureImage("keyboard-raw.png", 675, 141, 549, { border: false })}
+      ${storeFooter("Mac example · Customize the panel shortcut in Chrome")}
+    `),
   },
   {
-    source: "pinned-tabs-raw.png",
-    output: "screenshot-02-pinned-tabs.png",
-    headlineLead: "Pin once.",
-    headlineAccent: "Ready in every window.",
-    supporting: ["Keep your everyday apps", "close in each Chrome window."],
-    pillar: "02 / PINNED TABS IN SYNC",
-    accent: "#A58AFF",
-    steps: [
-      { title: "Your apps, kept in sync", detail: "Pinned copies follow you across windows." },
-      { title: "Always easy to find", detail: "Pinned tabs stay together at the top." },
-      { title: "A quieter view when you want it", detail: "Hide the pinned list while sync continues." },
-    ],
-    footnote: "Pinned-tab sync applies to eligible Chrome windows.",
+    file: "screenshot-04-groups-bulk.png",
+    title: "Bulk actions",
+    svg: () => page(1280, 800, `
+      ${storeHeader("04", "BULK ACTIONS")}
+      ${headline(52, 210, "A little less", { size: 89 })}
+      ${headline(52, 298, "tab juggling.", { size: 89, fill: colors.primary })}
+      ${text(56, 378, "Select across windows. Group, move,", { size: 21, fill: colors.muted })}
+      ${text(56, 411, "close or save in one go.", { size: 21, fill: colors.muted })}
+      ${rule(56, 479, 557, 479, "#C9BDCF")}
+      ${headline(53, 607, "4", { size: 130, fill: colors.primary })}
+      ${text(139, 561, "tabs selected", { size: 25, weight: 700 })}
+      ${text(139, 598, "across two windows", { size: 18, fill: colors.muted })}
+      ${label(56, 674, "ONE SELECTION. A FEW GOOD OPTIONS.", { size: 10, tracking: 1.2 })}
+      ${captureImage("groups-bulk-raw.png", 650, 139, 574)}
+      ${label(650, 575, "ACTION BAR / SAME SELECTION", { size: 10, tracking: 1.2 })}
+      ${captureImage("bulk-toolbar-raw.png", 650, 597, 574)}
+      ${storeFooter("Pinned tabs stay outside bulk selection")}
+    `, colors.lilac),
   },
   {
-    source: "keyboard-raw.png",
-    output: "screenshot-03-keyboard.png",
-    headlineLead: "Fast keys.",
-    headlineAccent: "Thoughtful details.",
-    supporting: ["Keep your hands on the keyboard.", "Reach the right tab in a few keystrokes."],
-    pillar: "03 / KEYS AND INTERACTIONS",
-    accent: "#73DCC7",
-    keyboard: true,
-    steps: [
-      { key: "Your shortcut", title: "Open the side panel", detail: "Customize the opener in Chrome." },
-      { key: "Up / Down", title: "Focus a tab", detail: "Move through the visible list." },
-      { key: "Enter", title: "Switch to that tab", detail: "Bring its window into focus." },
-    ],
-    footnote: "Arrow keys and Enter work while the tab list is focused.",
-  },
-  {
-    source: "groups-bulk-raw.png",
-    output: "screenshot-04-groups-bulk.png",
-    headlineLead: "Related tabs.",
-    headlineAccent: "Together at last.",
-    supporting: ["Bring related work into a Ztab group.", "Select several tabs and act on them together."],
-    pillar: "04 / GROUPS AND BULK ACTIONS",
-    accent: "#A58AFF",
-    steps: [
-      { title: "Drag tabs together", detail: "Group related pages across windows." },
-      { title: "Select once, act together", detail: "Group, move, close, or save selected tabs." },
-      { title: "Your windows stay in place", detail: "Grouping does not move the actual tabs." },
-    ],
-    footnote: "Groups belong to Ztab and are independent of Chrome tab groups.",
-  },
-  {
-    source: "saved-raw.png",
-    output: "screenshot-05-saved.png",
-    headlineLead: "Worth keeping?",
-    headlineAccent: "Save it for later.",
-    supporting: ["Give useful pages a place of their own.", "Keep them handy after their tabs are closed."],
-    pillar: "05 / YOUR SAVED PAGES",
-    accent: "#73DCC7",
-    steps: [
-      { title: "Save a page in a moment", detail: "Use a tab menu or Save current tab." },
-      { title: "Find it when you need it", detail: "Search saved titles and website addresses." },
-      { title: "Keep useful collections", detail: "Organize pages in your own local library." },
-    ],
-    footnote: "Saved uses Ztab's local library, separate from Chrome bookmarks.",
+    file: "screenshot-05-saved.png",
+    title: "Saved pages",
+    svg: () => page(1280, 800, `
+      ${storeHeader("05", "SAVED PAGES")}
+      ${headline(52, 207, "Worth keeping.", { size: 99 })}
+      ${text(803, 156, "A home for useful pages,", { size: 22, fill: colors.muted })}
+      ${text(803, 189, "after their tabs are closed.", { size: 22, fill: colors.muted })}
+      ${captureImage("saved-raw.png", 56, 255, 702)}
+      ${[
+        ["Save", "Keep a page for later."],
+        ["Collect", "Make room for a topic."],
+        ["Find again", "Search your saved pages."],
+      ].map(([title, detail], i) => `
+        ${rule(841, 292 + i * 135, 1224, 292 + i * 135)}
+        ${headline(838, 351 + i * 135, title, { size: 48, fill: colors.primary })}
+        ${text(841, 388 + i * 135, detail, { size: 17, fill: colors.muted })}
+      `).join("")}
+      ${storeFooter("Your local page library · Separate from Chrome bookmarks")}
+    `),
   },
 ];
 
-const screenshots = await Promise.all(screenshotSpecs.map(async (spec) => {
-  const source = await readFile(join(screenshotSourceDirectory, spec.source));
-  const decoded = PNG.sync.read(source);
-  if (decoded.width !== screenshotCapture.width || decoded.height !== screenshotCapture.height)
-    throw new Error(`${spec.source}: expected ${screenshotCapture.width}×${screenshotCapture.height}, got ${decoded.width}×${decoded.height}. Recheck the native side-panel viewport and screenshotCapture contract.`);
-  return { ...spec, screenshotDataUri: escapeDataUri(source), sourceWidth: decoded.width, sourceHeight: decoded.height };
-}));
+function smallPromo() {
+  return page(440, 280, `
+    ${brand(24, 23, 121, true)}
+    ${slogan.lines.map((line, i) => headline(26, 142 + i * 48, line, { size: 45, fill: colors.light, tracking: -0.2 })).join("")}
+    ${rule(28, 223, 412, 223, "#847092")}
+    ${label(28, 251, "WINDOWS / PINS / KEYBOARD", { size: 10, tracking: 1.5, fill: colors.lightMuted })}
+  `, colors.primary);
+}
+
+function marqueePromo() {
+  return page(1400, 560, `
+    ${brand(48, 27, 150, true)}
+    ${slogan.heroLines.map((line, i) => headline(51, 190 + i * 92, line, { size: 101, fill: colors.light })).join("")}
+    ${rule(56, 435, 659, 435, colors.darkLine)}
+    ${label(56, 479, "ACROSS WINDOWS / SHARED PINS / KEYBOARD SHORTCUTS", { size: 11, tracking: 1, fill: colors.lightMuted })}
+    ${rule(738, 49, 738, 512, colors.darkLine)}
+    ${captureImage("side-panel-raw.png", 811, 56, 520)}
+  `, colors.night);
+}
+
+function socialHeader(number, title, dark = false) {
+  return `${brand(64, 43, 174, dark)}
+    ${label(1016, 84, `${number} / 05`, { size: 16, anchor: "end", fill: dark ? colors.lightMuted : colors.muted })}
+    ${label(64, 157, title, { size: 14, fill: dark ? colors.lightMuted : colors.primary })}`;
+}
+
+function socialFooter(dark = false) {
+  const fill = dark ? colors.lightMuted : colors.muted;
+  return `${rule(64, 1367, 1016, 1367, dark ? colors.darkLine : colors.line)}
+    ${text(64, 1409, slogan.text, { size: 21, fill })}
+    ${label(1016, 1409, "ZTAB 2.0", { size: 12, fill, anchor: "end" })}`;
+}
+
+const socialCards = [
+  {
+    file: "01-跨窗口管理.png",
+    title: "跨窗口管理",
+    svg: () => page(1080, 1440, `
+      ${socialHeader("01", "CHROME / TABS IN ORDER")}
+      ${chinese(60, 267, "标签页，", { size: 75 })}
+      ${chinese(60, 365, "终于理顺了。", { size: 75, fill: colors.primary })}
+      ${slogan.lines.map((line, i) => headline(62, 438 + i * 50, line, { size: 54 })).join("")}
+      ${captureImage("side-panel-raw.png", 100, 548, 880)}
+      ${socialFooter()}
+    `),
+  },
+  {
+    file: "02-固定标签同步.png",
+    title: "固定标签同步",
+    svg: () => page(1080, 1440, `
+      ${socialHeader("02", "PIN ONCE. READY IN EVERY WINDOW.", true)}
+      ${chinese(60, 278, "常用网站，", { size: 77, fill: colors.light })}
+      ${chinese(60, 381, "固定一次就好。", { size: 77, fill: colors.light })}
+      ${chinese(64, 473, "换个窗口，常用网站还在。", { size: 31, fill: colors.lightMuted })}
+      ${captureImage("pinned-tabs-raw.png", 64, 572, 952)}
+      ${rule(64, 1141, 1016, 1141, colors.darkLine)}
+      ${chinese(64, 1200, "截图里，Wikipedia 已固定在两个窗口。", { size: 28, fill: colors.light })}
+      ${chinese(64, 1257, "同一 Chrome 配置下的窗口，共享固定标签。", { size: 25, fill: colors.lightMuted })}
+      ${socialFooter(true)}
+    `, colors.night),
+  },
+  {
+    file: "03-键盘快捷操作.png",
+    title: "键盘快捷操作",
+    svg: () => page(1080, 1440, `
+      ${socialHeader("03", "STAY IN FLOW")}
+      ${chinese(60, 267, "找页面，", { size: 72 })}
+      ${chinese(60, 359, "也能不离开键盘。", { size: 72 })}
+      ${chinese(64, 431, "打开侧栏 → 搜索 → 回车切换", { size: 29, fill: colors.muted })}
+      ${captureImage("keyboard-raw.png", 154, 488, 772, { border: false })}
+      ${chinese(64, 1320, "Mac 快捷键示例，打开侧栏的快捷键可自定义。", { size: 24, fill: colors.muted })}
+      ${socialFooter()}
+    `),
+  },
+  {
+    file: "04-稍后再看.png",
+    title: "稍后再看",
+    svg: () => page(1080, 1440, `
+      ${socialHeader("04", "WORTH KEEPING")}
+      ${chinese(60, 267, "现在先存下，", { size: 75 })}
+      ${chinese(60, 365, "以后慢慢看。", { size: 75, fill: colors.primary })}
+      ${chinese(64, 443, "把值得留的页面，收进 Saved。", { size: 31, fill: colors.muted })}
+      ${captureImage("saved-raw.png", 64, 523, 952)}
+      ${chinese(64, 1225, "按主题收进集合，关掉标签也找得到。", { size: 31 })}
+      ${chinese(64, 1284, "Saved 是独立的本地收藏库。", { size: 25, fill: colors.muted })}
+      ${socialFooter()}
+    `),
+  },
+  {
+    file: "05-批量整理.png",
+    title: "批量整理",
+    svg: () => page(1080, 1440, `
+      ${socialHeader("05", "LESS TAB JUGGLING")}
+      ${chinese(60, 267, "一次选中，", { size: 75 })}
+      ${chinese(60, 365, "一起整理。", { size: 75, fill: colors.primary })}
+      ${chinese(64, 443, "跨窗口多选，分组、移动、关闭或保存。", { size: 29, fill: colors.muted })}
+      ${captureImage("groups-bulk-raw.png", 103, 492, 874)}
+      ${chinese(103, 1144, "同一次选择的底部操作栏 · 单独截取", { size: 21, fill: colors.muted })}
+      ${captureImage("bulk-toolbar-raw.png", 103, 1167, 874)}
+      ${socialFooter()}
+    `, colors.lilac),
+  },
+];
 
 const iconSvg = await readFile(join(sourceDirectory, "icon.svg"), "utf8");
-const smallIconSvg = await readFile(
-  join(sourceDirectory, "icon-small.svg"),
-  "utf8",
-);
+const smallIconSvg = await readFile(join(sourceDirectory, "icon-small.svg"), "utf8");
+for (const size of [16, 32, 48, 128]) {
+  await render(size <= 32 ? smallIconSvg : iconSvg, join(projectRoot, "icons", `icon${size}.png`), size, { opaque: false });
+}
+for (const spec of screenshots) {
+  await render(spec.svg(), join(finalDirectory, "screenshots", spec.file), 1280);
+}
+await render(smallPromo(), join(finalDirectory, "promo-small-440x280.png"), 440);
+await render(marqueePromo(), join(finalDirectory, "promo-marquee-1400x560.png"), 1400);
+for (const spec of socialCards) {
+  await render(spec.svg(), join(finalDirectory, "xiaohongshu", spec.file), 1080);
+}
 
-await Promise.all([
-  renderSvg(smallIconSvg, join(projectRoot, "icons", "icon16.png"), 16),
-  renderSvg(iconSvg, join(projectRoot, "icons", "icon32.png"), 32),
-  renderSvg(iconSvg, join(projectRoot, "icons", "icon48.png"), 48),
-  renderSvg(iconSvg, join(projectRoot, "icons", "icon128.png"), 128),
-]);
+const screenshotThumbnails = await Promise.all(screenshots.map(async (spec) => dataUri(await readFile(join(finalDirectory, "screenshots", spec.file)))));
+const promoSvg = smallPromo();
+await render(page(1368, 1530, `
+  ${brand(32, 27, 144)}${headline(230, 66, slogan.text, { size: 41 })}
+  ${label(32, 115, "CHROME WEB STORE / FINAL ARTWORK")}
+  ${screenshotThumbnails.map((uri, i) => {
+    const x = 32 + (i % 2) * 672;
+    const y = 155 + Math.floor(i / 2) * 451;
+    return `<image href="${uri}" x="${x}" y="${y}" width="640" height="400"/>${label(x, y + 426, `0${i + 1} / ${screenshots[i].title.toUpperCase()}`, { size: 12 })}`;
+  }).join("")}
+  <svg x="704" y="1057" width="629" height="400" viewBox="0 0 440 280">${promoSvg.slice(promoSvg.indexOf(">") + 1, promoSvg.lastIndexOf("</svg>"))}</svg>
+  ${label(704, 1483, "06 / SMALL PROMOTIONAL TILE", { size: 12 })}
+`, "#E3DDD6"), join(reviewDirectory, "screenshots-overview.png"), 1368);
 
-const renderedIcon = await readFile(join(projectRoot, "icons", "icon128.png"));
-const iconDataUri = escapeDataUri(renderedIcon);
+const socialThumbnails = await Promise.all(socialCards.map(async (spec) => dataUri(await readFile(join(finalDirectory, "xiaohongshu", spec.file)))));
+await render(page(1780, 606, `
+  ${brand(28, 24, 128)}${label(1752, 58, "XIAOHONGSHU / FINAL ARTWORK", { anchor: "end", size: 13 })}
+  ${socialThumbnails.map((uri, i) => `<image href="${uri}" x="${28 + i * 348}" y="105" width="332" height="443"/>${chinese(28 + i * 348, 584, socialCards[i].title, { size: 19 })}`).join("")}
+`, "#E3DDD6"), join(reviewDirectory, "xiaohongshu-overview.png"), 1780);
 
-await mkdir(screenshotFinalDirectory, { recursive: true });
+const marqueeThumbnail = dataUri(await readFile(join(finalDirectory, "promo-marquee-1400x560.png")));
+await render(page(1400, 1230, `
+  <image href="${marqueeThumbnail}" x="0" y="0" width="1400" height="560"/>
+  ${label(56, 628, "COLOR / P2 WITH PAPER & INK")}
+  ${[colors.primary, colors.secondary, colors.paper, colors.ink].map((fill, i) => `<rect x="${56 + i * 326}" y="659" width="302" height="82" fill="${fill}" stroke="#D4CDC7"/>${label(56 + i * 326, 773, fill)}`).join("")}
+  ${rule(56, 819, 1344, 819)}
+  ${label(56, 872, "TYPE / INSTRUMENT SERIF")}
+  ${headline(53, 964, "A little room to think.", { size: 79 })}
+  ${label(827, 872, "DETAIL / MANROPE")}
+  ${text(827, 933, "Clear windows. Familiar keys.", { size: 25 })}
+  ${text(827, 976, "Ztab — the everyday essentials.", { size: 20, fill: colors.muted })}
+  ${rule(56, 1041, 1344, 1041)}
+  ${label(56, 1096, "CHINESE / NOTO SERIF SC")}
+  ${chinese(56, 1171, "让标签页，回到井井有条。", { size: 44 })}
+`, colors.paper), join(reviewDirectory, "brand-overview.png"), 1400);
 
-const screenshotRenders = screenshots.map((spec) => renderSvg(
-  screenshotSvg({ ...spec, iconDataUri }),
-  join(screenshotFinalDirectory, spec.output),
-  1280,
-  { removeAlpha: true },
-));
-
-await Promise.all([
-  renderSvg(
-    promoSvg({
-      width: 440,
-      height: 280,
-      small: true,
-      iconDataUri,
-    }),
-    join(finalDirectory, "promo-small-440x280.png"),
-    440,
-    { removeAlpha: true },
-  ),
-  renderSvg(
-    promoSvg({
-      width: 1400,
-      height: 560,
-      small: false,
-      iconDataUri,
-    }),
-    join(finalDirectory, "promo-marquee-1400x560.png"),
-    1400,
-    { removeAlpha: true },
-  ),
-  ...screenshotRenders,
-]);
-
-console.log("Rendered extension icons and Chrome Web Store artwork.");
+console.log("Rendered approved P2 icons, five Store screenshots, two promo tiles, five Xiaohongshu cards, and three overview sheets using the final A slogan.");

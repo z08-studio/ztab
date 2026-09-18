@@ -8,7 +8,9 @@ Ztab: Tab Manager
 
 ## Positioning
 
-Another excellent tab manager for Chrome.
+The last tab manager you’ll need.
+
+Approved slogan A. Use this wording consistently across the product and promotional artwork; see [SLOGANS.md](SLOGANS.md).
 
 ## Summary
 
@@ -22,7 +24,7 @@ Productivity
 
 ## Detailed description
 
-Another excellent tab manager for Chrome.
+The last tab manager you’ll need.
 
 Ztab brings your Chrome windows together in one live side panel. Manage tabs across windows, keep your essential apps pinned in each one, and navigate comfortably with keys and clicks.
 

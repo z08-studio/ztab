@@ -1,15 +1,25 @@
-# Ztab upload-ready assets
+# Ztab final artwork
 
-Positioning: **Another excellent tab manager for Chrome.**
+Identity: **B1 Tab Hub + P2 indigo**. Slogan: **The last tab manager you’ll need.**
 
-- `promo-small-440x280.png`: small promotional tile.
-- `promo-marquee-1400x560.png`: marquee promotional tile with all three product strengths.
-- `screenshots/screenshot-01-side-panel.png`: cross-window tabs, recent sorting, and inline groups.
-- `screenshots/screenshot-02-pinned-tabs.png`: pinned tabs synchronized across windows.
-- `screenshots/screenshot-03-keyboard.png`: keyboard navigation and thoughtful interactions.
-- `screenshots/screenshot-04-groups-bulk.png`: cross-window Ztab groups and bulk tab actions.
-- `screenshots/screenshot-05-saved.png`: saved pages with favicons in an independent local library.
+## Chrome Web Store
 
-Use `icons/icon128.png` as the store icon. Matching colored tabs in two overlapping browser windows preserve the established identity.
+- `promo-small-440x280.png`: 440×280 promotional tile.
+- `promo-marquee-1400x560.png`: 1400×560 marquee tile.
+- `screenshots/screenshot-01-side-panel.png`: 1280×800; brand introduction and cross-window management.
+- `screenshots/screenshot-02-pinned-tabs.png`: 1280×800; Wikipedia pinned in two windows.
+- `screenshots/screenshot-03-keyboard.png`: 1280×800; actual keyboard-help dialog.
+- `screenshots/screenshot-04-groups-bulk.png`: 1280×800; four selected pages and the separately labeled action bar.
+- `screenshots/screenshot-05-saved.png`: 1280×800; the real Saved collection of public pages.
 
-The promotional artwork and all five 1280×800 screenshots use bundled Manrope typography, exact Chrome Web Store dimensions, and no alpha channel. Each screenshot shows the complete rendering surface of the actual native side panel, captured through its CDP target and scaled proportionally. Chrome's native header and window frame are outside that surface and are not reconstructed. The first three screenshots and the promo tiles retain equal emphasis on windows, pinned tabs, and keyboard shortcuts. Rebuild all assets with `pnpm assets:store`. Follow `store-listing/ARTWORK.md` for the screenshot order, source capture guidance, and verification rules.
+Upload the five screenshots in numeric order. Use the repository's `icons/icon128.png` for the Store icon. The overview sheets in `../review/` are for reviewing the set, not Store upload.
+
+## Xiaohongshu
+
+`xiaohongshu/` contains five 1080×1440 Chinese portrait images, ordered as windows, pins, keyboard, Saved, and bulk actions. The cover and footer use the final slogan; all images use the approved identity. `../../XIAOHONGSHU.md` contains matching post copy without outbound links.
+
+All twelve marketing images are opaque RGB PNGs. Instrument Serif headlines, Manrope details, and a licensed Noto Serif SC subset provide consistent typography without relying on system fonts. The layout uses warm paper, ink, and the approved indigo palette.
+
+Product images are privacy-cropped captures from the user's Chrome and installed Ztab 2.0. They show public Wikipedia, NASA, Python, Rust and MDN pages. Browser account controls and private pages are excluded. The real UI pixels are scaled proportionally, never reconstructed.
+
+Rebuild with `pnpm assets:store`. See `../../ARTWORK.md` for provenance, exact design rules and verification. The files are prepared locally; rendering does not upload or publish them.

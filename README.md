@@ -1,6 +1,6 @@
 # Ztab
 
-**Another excellent tab manager for Chrome.**
+**The last tab manager you’ll need.**
 
 [Get the extension from the Chrome Web Store](https://chromewebstore.google.com/detail/fakbifeeblnopdhicpmhhmcdhmefphjp)
 
