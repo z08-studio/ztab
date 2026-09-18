@@ -29,13 +29,17 @@ Real Chrome window metadata and UI behavior are still validated manually by load
 
 ## Base USDC support verification
 
-Verified on 2026-09-18 in an isolated Chrome for Testing profile with the actual extension page: **Support my coding** opens the dialog; 3, 5, 10 USDC and custom amounts update the instructions and MetaMask mobile link. An invalid amount hides the payment link. Copying uses the configured recipient, Escape closes the dialog, and focus returns to the footer. Light and dark layouts fit 280px, 320px, and 420px widths without horizontal overflow.
+Verified on 2026-09-18 in an isolated Chrome for Testing profile with the actual extension page: **Support my coding** opens a dialog showing **USDC · Base**, the bundled address QR, the full recipient address, and **Copy address**. Supporters choose the network, token, and amount in their own wallet. The dialog contains no wallet connection, amount selection, or external payment link.
 
-The standalone support page was reviewed in light and dark styles at 320px, 420px, and 900px. The URL amount, custom validation, clipboard success, and denied-clipboard manual selection worked. Actual rendered QR images for 3 and 1.234567 USDC decoded to the expected Base payment request. Wallet services load only after Connect is selected.
+Clipboard copying writes the exact configured address and reports success. When clipboard access is denied, the full 42-character address is focused and selected for manual copying. Escape closes the dialog and returns focus to the footer. Light and dark layouts fit 280px, 320px, and 420px widths without horizontal overflow.
 
-The supplied public Project ID is now included in the Vite configuration. A production build with all environment files absent succeeds and embeds this default ID. Configuration checks also verify blank-value fallback, a custom environment override, and rejection of a malformed production override. The real AppKit picker was verified with this Project ID: it loads wallet options including MetaMask, Coinbase, and Trust Wallet, and WalletConnect produces a pairing QR. No wallet was paired and no transaction was sent. The integration uses the installed SDK's `getAccount().isConnected` API when choosing the Connect or Account view.
+`pnpm package` passes all 145 tests and validates the packaged JavaScript. The QR test decodes the bundled image and checks that its payload matches the copy recipient. No payment website or service configuration is required. Phone scanning and a real transfer remain unverified. UI references: [light support dialog](../docs/screenshots/base-usdc-support.png) and [dark support dialog](../docs/screenshots/base-usdc-support-dark.png).
 
-`pnpm package` passes all 158 tests and validates the packaged JavaScript. The QR test checks the bundled address against the copy recipient. Payment tests use a fake wallet provider to cover exact USDC encoding, switching/adding Base, cancellation, changed accounts, wrong networks, and uncertain transaction responses. Actual desktop wallet pairing, mobile app handoff, phone scanning, and a real transfer remain unverified. HTTPS deployment and the extension's checkout URL are still pending. UI references: [light support dialog](../docs/screenshots/base-usdc-support.png), [dark support dialog](../docs/screenshots/base-usdc-support-dark.png), [support page](../docs/screenshots/support-page.png), [dark support page](../docs/screenshots/support-page-dark.png), and [wallet picker](../docs/screenshots/reown-wallet-picker.png).
+## Toolbar icon verification
+
+Verified on 2026-09-18: the 16px and 32px PNGs use the optically fitted small SVG with tighter padding, simplified silhouettes, wider gaps, and a darker secondary purple. At 16px, the visible bounds grow from roughly 14×12 to 16×14 pixels. Reviewed both PNG sizes at their actual size on white, gray, and dark backgrounds; see the [before/after comparison](../docs/screenshots/toolbar-icon-comparison.png).
+
+`pnpm assets:store` regenerates the icons; the 48px/128px icons and marketing images remain unchanged. In an isolated Chrome for Testing profile, pinned the updated extension to the native toolbar and verified that **Open Ztab** opens its side panel. `pnpm package` passes all 145 tests and validates the packaged JavaScript.
 
 ## Final PR review
 
