@@ -6,15 +6,15 @@ The extension remains native JavaScript and does not bundle this page or its wal
 
 ## Local preview
 
-Run `pnpm support:dev` from the repository root, then open `http://127.0.0.1:4173/`. Append `?amount=3` to preselect an amount. Without a Project ID, wallet connection is disabled and the payment QR and copy action remain usable.
+Run `pnpm support:dev` from the repository root, then open `http://127.0.0.1:4173/`. Append `?amount=3` to preselect an amount. Ztab's public Reown Project ID is included in `vite.config.js`, so wallet connection is available without an environment file.
 
-`pnpm support:build:preview` writes a local preview to `dist-support/`; `pnpm support:preview` serves that build. The preview can be reviewed without creating a Reown account. It does not verify a live wallet connection.
+`pnpm support:build` writes the production build to `dist-support/`; `pnpm support:preview` serves that build. `pnpm support:build:preview` uses Vite's preview mode with the same default Project ID. Viewing the page does not initiate a wallet connection.
 
 ## Enable wallet connections and deploy
 
-1. Create a Ztab project in the [Reown dashboard](https://dashboard.reown.com). Copy `support-site/.env.example` to `support-site/.env.local` and set `VITE_REOWN_PROJECT_ID`. It is a browser-visible application identifier, not a wallet key. Keep the local environment file out of Git.
+1. Use the public Ztab Project ID already set in `vite.config.js`. To use another Reown project, set `VITE_REOWN_PROJECT_ID` in the build environment or copy `.env.example` to `.env.local` and fill it in. An unset or blank override uses the default. This identifier is browser-visible and is not a wallet key.
 2. Run `pnpm support:dev` and test actual desktop and mobile wallets. AppKit loads only when **Connect wallet** is selected. Only Base is configured; email/social login, analytics, swaps, and onramps are disabled.
-3. Run `pnpm support:build` and deploy the contents of `dist-support/` to an HTTPS static host. The production build rejects a missing or malformed Project ID. No backend, account database, or signing key is required.
+3. Run `pnpm support:build` and deploy the contents of `dist-support/` to an HTTPS static host. No environment file is required; the production build rejects malformed Project ID overrides. No backend, account database, or signing key is required.
 4. Set the deployed origin in the project's [Reown allowlist](https://docs.reown.com/cloud/relay). AppKit metadata uses the current origin. Check the project's current [plan limits](https://reown.com/pricing) before deployment.
 5. After the live page is verified, set `SUPPORT_CHECKOUT_URL` in `src/shared/support.js` to its HTTPS URL and run `pnpm package`. This enables **Continue with wallet** in the extension. The link passes only the selected amount; the recipient, token, and chain are fixed in code.
 
