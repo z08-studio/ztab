@@ -171,6 +171,54 @@ svg {
     height: 14px;
 }
 
+.toolbar-pin-tip {
+    display: flex;
+    align-items: flex-start;
+    flex: 0 0 auto;
+    gap: 8px;
+    padding: 11px 12px;
+    background: var(--accent-soft);
+    border-bottom: 1px solid var(--line);
+}
+
+.toolbar-pin-tip-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.toolbar-pin-tip strong {
+    display: block;
+    color: var(--strong);
+    font-weight: 500;
+}
+
+.toolbar-pin-tip p {
+    margin: 4px 0 0;
+    font-size: 12px;
+}
+
+.toolbar-pin-tip-step {
+    white-space: nowrap;
+}
+
+.toolbar-pin-tip-icon,
+.toolbar-pin-tip-icon svg {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+}
+
+.toolbar-pin-tip-icon {
+    color: var(--strong);
+    vertical-align: -2px;
+}
+
+.toolbar-pin-tip > .icon-button {
+    width: 24px;
+    height: 24px;
+    margin: -2px -3px 0 0;
+}
+
 .workspace-panel {
     position: relative;
     flex: 1;
