@@ -1,6 +1,6 @@
 import { buildTabTreeModel, flattenTabTreeTabs, formatShortcut, getMoveTargets, getPinnedTabs } from "./shared/tab-tree.js";
 import { getAllNormalWindowsWithTabs, getCommands, getPanelWindow, getTab, moveTabs, openShortcutSettings, removeTabs, sendMessage, storageGet, storageSet, updateTab, updateWindow } from "./background/chrome-api.js";
-import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_SHOW_PINNED_TABS_KEY, STORAGE_WORKSPACE_KEY } from "./background/constants.js";
+import { MESSAGE_MERGE_WINDOWS, MESSAGE_WORKSPACE, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_SHOW_PINNED_TABS_KEY, STORAGE_TOOLBAR_PIN_TIP_DISMISSED_KEY, STORAGE_WORKSPACE_KEY } from "./background/constants.js";
 import { resolveShowPinnedTabs } from "./shared/preferences.js";
 import { emptyWorkspace, GROUP_COLORS, savedUrl } from "./shared/workspace.js";
 import { closeMenu, field, icon, node, openDialog, openMenu, selectInput, textInput } from "./panel-ui.js";
@@ -10,6 +10,7 @@ import { createTabDragController } from "./tab-drag.js";
 import { createTabSelection } from "./tab-selection.js";
 import { selectableTabs } from "./shared/tab-selection.js";
 import { buildTabPresentation, resolveTabSort, TAB_SORT_STORAGE_KEY } from "./shared/tab-sorting.js";
+import { createToolbarPinTip } from "./toolbar-pin-tip.js";
 
 const state = {
     tree: [], currentWindowId: null, activeTabId: null, focusedTabId: null, incognito: false,
@@ -824,6 +825,39 @@ function sortMenu() {
 
 async function init() {
     initSupportDialog();
+    const toolbarPinTip = createToolbarPinTip({
+        onVisibilityChange: (visible) => { document.getElementById("toolbar-pin-tip").hidden = !visible; }
+    });
+    document.getElementById("toolbar-pin-tip-extensions").append(icon("extensions"));
+    document.getElementById("toolbar-pin-tip-pin").append(icon("pin"));
+    const dismissPinTip = document.getElementById("dismiss-toolbar-pin-tip");
+    dismissPinTip.append(icon("close"));
+    dismissPinTip.addEventListener("click", async () => {
+        const restoreFocus = document.activeElement === dismissPinTip;
+        dismissPinTip.disabled = true;
+        try {
+            await toolbarPinTip.dismiss();
+            if (restoreFocus && [dismissPinTip, document.body].includes(document.activeElement))
+                elements.search.focus({ preventScroll: true });
+        }
+        catch {
+            setStatus("Couldn't save your choice. Try closing the pinning tip again.");
+        }
+        finally {
+            dismissPinTip.disabled = false;
+        }
+    });
+    // Chrome 123–129 has no settings-change event; recheck when the panel returns.
+    chrome.action?.onUserSettingsChanged?.addListener(toolbarPinTip.refresh);
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes[STORAGE_TOOLBAR_PIN_TIP_DISMISSED_KEY])
+            toolbarPinTip.refresh();
+    });
+    window.addEventListener("focus", toolbarPinTip.refresh);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") toolbarPinTip.refresh();
+    });
+    toolbarPinTip.refresh();
     dragController = createTabDragController({
         root: elements["workspace-panel"], list: elements["tab-list"], ungroupZone: elements["ungroup-drop"],
         canDrag: () => state.view === "tabs" && !selection.active() && !state.query.tabs.trim() && state.movingTabId === null && !state.renamingGroup && !isBusy() && !document.querySelector("dialog[open]"),

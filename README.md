@@ -20,6 +20,8 @@ Ztab 2.0 requires **Chrome 123 or later**. Older Chrome installations remain on 
 
 Click the Ztab toolbar icon to open **Tabs** or **Saved**. Tabs shows pinned tabs, inline groups, and the remaining tabs by window, using normal Chrome windows in the same browsing mode. Thin dividers separate rows, and close buttons remain visible beside regular tabs.
 
+If Ztab is not pinned to the toolbar, a small banner explains how to pin it from Chrome's Extensions menu. It appears when you open the panel until you pin Ztab or dismiss the banner. Dismissing it is remembered locally across windows, browser restarts, and extension updates.
+
 From the side panel, you can:
 
 - See which tabs belong to each window.

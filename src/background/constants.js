@@ -4,6 +4,7 @@ export const STORAGE_INITIALIZED_KEY = "pinallwindows.initialized";
 export const STORAGE_REVISION_KEY = "pinallwindows.revision";
 export const STORAGE_LEGACY_CANONICAL_KEY = "pinallwindows.canonical";
 export const STORAGE_SHOW_PINNED_TABS_KEY = "pinallwindows.showPinnedTabs";
+export const STORAGE_TOOLBAR_PIN_TIP_DISMISSED_KEY = "ztab.toolbarPinTipDismissed";
 export const MESSAGE_CLEAR_STORAGE = "PINALLWINDOWS_CLEAR_STORAGE";
 export const MESSAGE_REPAIR_PINNED_STORAGE = "PINALLWINDOWS_REPAIR_PINNED_STORAGE";
 export const MESSAGE_GET_SYNC_DIAGNOSTICS = "PINALLWINDOWS_GET_SYNC_DIAGNOSTICS";

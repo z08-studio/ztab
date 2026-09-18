@@ -27,6 +27,17 @@ The tests cover:
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
+## Toolbar pinning banner
+
+Verified on 2026-09-18 with the actual extension page in an isolated Chrome for Testing 153 profile: an unpinned action shows the banner; Chrome's **Pin to toolbar** toggle hides it immediately, and unpinning shows it again until dismissed. Dismissing with Enter moves focus to Search and hides the banner in another browser window. The local dismissal survives page reloads, a full browser restart, and reloading the unpacked extension. Light and dark layouts fit 280px, 320px, and 420px widths without horizontal overflow. References: [light banner](../docs/screenshots/toolbar-pin-banner.png) and [dark banner](../docs/screenshots/toolbar-pin-banner-dark.png).
+
+The seven controller/API tests cover known versus unknown pin state, retained dismissal, another panel's dismissal, stale reads, and storage/API failures. Chrome 123–129 uses panel focus/visibility checks because the action-settings event starts in Chrome 130; those older browser versions and a Store-delivered update were not manually tested.
+
+1. With the extension unpinned and no previous dismissal, open and reopen the panel; the banner should appear above Search in both Tabs and Saved.
+2. Pin Ztab from Chrome's Extensions menu; the banner should disappear. On Chrome 123–129, return focus to the panel to refresh the state.
+3. Unpin it, open panels in two windows, then dismiss in one. Both should hide the banner; reopening the panels, restarting Chrome, and reloading the extension must retain the choice.
+4. Check the close button with the keyboard and review 280px, 320px, and 420px widths in light and dark modes.
+
 ## Base USDC support verification
 
 Verified on 2026-09-18 in an isolated Chrome for Testing profile with the actual extension page: **Support my coding** opens a dialog showing **USDC · Base**, the bundled address QR, the full recipient address, and **Copy address**. Supporters choose the network, token, and amount in their own wallet. The dialog contains no wallet connection, amount selection, or external payment link.

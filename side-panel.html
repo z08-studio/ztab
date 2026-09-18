@@ -13,6 +13,13 @@
         <button id="nav-tabs" role="tab" aria-controls="workspace-panel" aria-selected="true" data-view="tabs" type="button">Tabs <span id="tabs-count" class="count"></span></button>
         <button id="nav-saved" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="saved" tabindex="-1" type="button">Saved <span id="saved-count" class="count"></span></button>
       </nav>
+      <aside id="toolbar-pin-tip" class="toolbar-pin-tip" aria-label="Pin Ztab to the toolbar" hidden>
+        <div class="toolbar-pin-tip-copy">
+          <strong>Pin Ztab for quick access</strong>
+          <p>Click <span class="toolbar-pin-tip-step"><span id="toolbar-pin-tip-extensions" class="toolbar-pin-tip-icon" aria-hidden="true"></span> Extensions</span>, then <span class="toolbar-pin-tip-step"><span id="toolbar-pin-tip-pin" class="toolbar-pin-tip-icon" role="img" aria-label="the pin"></span> next to Ztab.</span></p>
+        </div>
+        <button id="dismiss-toolbar-pin-tip" class="icon-button" type="button" aria-label="Dismiss pinning tip and don't show again" title="Don't show again"></button>
+      </aside>
       <section id="workspace-panel" class="workspace-panel" role="tabpanel" aria-labelledby="nav-tabs">
         <div class="search-toolbar">
           <label class="search-wrap"><span id="search-icon"></span><input id="search" type="search" placeholder="Search tabs…" aria-label="Search tabs" autocomplete="off" /></label>

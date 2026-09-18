@@ -18,6 +18,20 @@ export function getCommands() {
         });
     });
 }
+export function getActionUserSettings() {
+    return new Promise((resolve) => {
+        if (!chrome.action?.getUserSettings) {
+            resolve(null);
+            return;
+        }
+        try {
+            chrome.action.getUserSettings((settings) => resolve(runtimeError() ? null : settings));
+        }
+        catch {
+            resolve(null);
+        }
+    });
+}
 export function openShortcutSettings() {
     return new Promise((resolve, reject) => {
         chrome.tabs.create({ url: "chrome://extensions/shortcuts" }, (tab) => {
