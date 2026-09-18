@@ -27,6 +27,10 @@ The tests cover:
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
+## 2.1.1 extension name
+
+Verified on 2026-09-18 in isolated Chrome for Testing 153: the extension list and details page show **Ztab: The last tab manager you’ll need.** in full, with the extension enabled at version **2.1.1**. See the [details screenshot](../docs/screenshots/extension-name-2.1.1.png). `pnpm package` passes all **152 tests**; all 45 packaged files match the source and staging directory. Compared with the published 2.1.0 ZIP, only the manifest's name and version change. Store publication remains a separate step.
+
 ## 2.1 release review and upgrade
 
 Verified on 2026-09-18 against the prepared **2.1.0** package. The published 2.0.0 CRX matches all 41 runtime files at `9a79758` (normalizing the Store-injected manifest `update_url`); this is the release baseline, not the older `v1.1.1` GitHub tag. See [the release guide](../CHROME_WEB_STORE.md) for checksums and the final change list.
@@ -82,7 +86,7 @@ Verified on 2026-09-06 with Chrome for Testing 153.0.8010.12 on macOS in an isol
 
 This smoke check does not verify store-delivered upgrades, Windows/Linux bindings, or a fresh manual Merge here run. Disable Playwright focus emulation before checking native focus and tab reactivation. Local review artifacts are in `output/playwright/`, including `verification.md`, `ztab-options.png`, and `ztab-320.png`; these are excluded from Git and the extension package.
 
-1. Load the prepared package in an isolated profile. Check that Chrome's extension list shows **Ztab: Tab Manager**, the toolbar action says **Open Ztab**, and the panel and options page use **Ztab** with a capital Z.
+1. Load the prepared package in an isolated profile. Check that Chrome's extension list shows **Ztab: The last tab manager you’ll need.**, the toolbar action says **Open Ztab**, and the panel and options page use **Ztab** with a capital Z.
 2. In a separate upgrade test, load the prior version at a fixed unpacked-extension path, pin sample sites, and turn off **Show pinned tabs**. Record the extension ID and local storage, replace the runtime files at the same path with the prepared update, and reload. Verify that the ID, shared pinned set, and hidden-pins preference survive. Keep the existing `pinallwindows.*` storage keys.
 3. Confirm that normal pin/unpin behavior still works in two eligible windows and newly created pinned copies open the site's root URL. Open a new normal window and verify the same pinned set appears. Closing a pinned copy may restore it; unpinning must remove it from the shared set.
 4. Review the generated listing images and actual UI for old displayed names. Historical migration names, existing GitHub URLs, and internal compatibility identifiers are intentional exceptions.

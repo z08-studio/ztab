@@ -17,7 +17,7 @@ test("package metadata presents Ztab as a cross-window tab manager", async () =>
   const manifestUrl = new URL("../manifest.json", import.meta.url);
   const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
 
-  assert.equal(manifest.name, "Ztab: Tab Manager");
+  assert.equal(manifest.name, "Ztab: The last tab manager you’ll need.");
   assert.equal(
     manifest.description,
     "Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.",

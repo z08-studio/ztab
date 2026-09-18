@@ -2,7 +2,7 @@
 
 ## Product identity
 
-- Product name: **Ztab** (capital Z, lowercase tab); Chrome Web Store name: **Ztab: Tab Manager**.
+- Product name: **Ztab** (capital Z, lowercase tab); Chrome Web Store name: **Ztab: The last tab manager you’ll need.**
 - Z-series product names begin with a capital **Z**, such as **Zdraft** and **Ztab**. Use **Ztab** in displayed names and product copy; keep technical identifiers, package names, filenames, and URLs unchanged.
 - Positioning: **The last tab manager you’ll need.**
 - The approved logo is **B1, Tab Hub, in P2 indigo** (`#493567` and `#A996CC`), with vector sources in `store-listing/source/`. The approved slogan is documented in `store-listing/SLOGANS.md` and sourced from `store-listing/source/slogan.json`.
