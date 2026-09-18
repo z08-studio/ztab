@@ -1,108 +1,67 @@
-# Ztab 2.0.0 release
+# Ztab 2.1.0 release
 
-The product name is **Ztab**, with a capital Z to match the Z-series naming convention used by **Zdraft**. It is positioned as **The last tab manager you’ll need.** The product has three equal pillars: managing tabs across windows, shared pinned tabs, and keyboard shortcuts with thoughtful interactions.
+Version **2.0.0 is published** in the existing Chrome Web Store item. Version **2.1.0** adds the approved indigo identity, clearer toolbar icons, an optional support dialog, and a dismissible toolbar pinning tip.
 
-Version **2.0.0** prepares a larger side-panel update: inline cross-window groups, batch actions, an independent Saved library, recent/manual sorting, website icons, and compact light/dark layouts. Existing pinned synchronization, window merging, and keyboard navigation remain part of the product.
+## Verified 2.0 baseline
 
-## Release status
+On **2026-09-18**, the [public Store item](https://chromewebstore.google.com/detail/ztab-tab-manager/fakbifeeblnopdhicpmhhmcdhmefphjp) showed **Ztab: Tab Manager**, version **2.0.0**, updated **2026-09-17**. GitHub's newest release tag is still `v1.1.1`; it is not the baseline for this update.
 
-This release is being prepared in a separate pull request. A local archive, GitHub push, or merged pull request does not upload, submit, or publish a Chrome Web Store update.
+The 88,107-byte CRX downloaded from Chrome's public update service contains **41 runtime files**. They match commit [`9a7975829eb568c6b76cd6d2680420d03d3dcbbd`](https://github.com/z08-studio/ztab/commit/9a7975829eb568c6b76cd6d2680420d03d3dcbbd) exactly, after removing the Store-injected `update_url` from the manifest and comparing the remaining manifest fields. The file lists also match. CRX SHA-256: `2da78ef5b90875db15fdd53bb18c1670063bb066ecf36d0122d44273f16b5308`.
+
+Use `git diff 9a79758..main` to review the published 2.0 runtime against main. The feature changes reviewed for 2.1 end at `f9dfa3c`; the release preparation updates version numbers, copy, artwork version labels, and verification records.
+
+## Changes from 2.0 to 2.1
+
+| Area | 2.1 change |
+| --- | --- |
+| Identity | Approved B1 Tab Hub logo in P2 indigo; the slogan is **The last tab manager you’ll need.** |
+| Toolbar | Optically fitted 16px and 32px icons improve legibility at actual toolbar size. |
+| Pinning guidance | An unpinned toolbar action shows a small tip. Pinning hides it; dismissing it is remembered locally across windows and restarts. |
+| Optional support | **Support my coding** shows a bundled address QR and a copy button for USDC on Base. It does not connect a wallet, initiate transfers, or contact a payment service. |
+| Store materials | Five refreshed screenshots and two promotional tiles; matching social assets are prepared separately. Version labels follow the package's major/minor version. |
+
+Inline cross-window groups, Saved, batch actions, recent/manual sorting, display labels, and light/dark layouts are already in **2.0**. They are not new 2.1 features. The final extension has no hosted checkout or wallet SDK; the intermediate support-site implementation was removed before this release.
+
+Permissions, Chrome's minimum version (**123**), existing storage keys, pinned synchronization, workspace operations, window merging, and keyboard navigation are unchanged from the published 2.0 runtime. The pinning tip adds only `ztab.toolbarPinTipDismissed` in local storage. Existing group definitions, Saved pages/collections, shared pinned sites, and preferences remain. As in 2.0, live group membership, manual ordering, and recent-use records reset on an extension update or browser restart.
+
+## Release status and package
 
 | Item | Status |
 | --- | --- |
-| Target version | 2.0.0 |
-| Minimum Chrome version | 123 |
+| Target version | 2.1.0 in both `manifest.json` and `package.json` |
 | Existing Store item | `fakbifeeblnopdhicpmhhmcdhmefphjp` |
-| Release archive | `ztab-2.0.0.zip`; 84,722 bytes (82.7 KiB), built 2026-09-16 |
-| Store listing copy | Prepared in [store-listing/LISTING.md](store-listing/LISTING.md) |
-| Upload, review submission, and publication | Separate release steps; not established by this preparation |
+| Public baseline | 2.0.0, verified 2026-09-18 |
+| Local archive | `ztab-2.1.0.zip`; 82,372 bytes (80.4 KiB), built 2026-09-18 |
+| Archive SHA-256 | `66bf4880c6957ccc24d8ad661dff7f79ff2438860b4a585178e0b13fcd7ad5a9` |
+| Package contents | 45 runtime files, with `manifest.json` at the archive root |
+| 2.1 upload, review submission, publication | Pending; local preparation does not establish these states |
 
-Archive SHA-256: `c56ca18fd0bdf6d004b41fee4de45c1bb5c37e2ac36473ed6f3e75ebf61466ee`.
+Run `pnpm assets:store` to regenerate icons and marketing assets. Run `pnpm package` to execute the tests, validate versions, JavaScript syntax and manifest references, and generate `dist-store/` plus the ZIP. The package includes runtime files, the privacy policy and license; it excludes dependencies, tests, development docs, review output, and marketing images. Rebuilding the archive requires updating its size and checksum here.
 
-Recheck the published version immediately before upload; do not infer it from the local manifest. Rebuilding the archive requires recording its new checksum.
+## Release verification — 2026-09-18
 
-### Public Store audit — 2026-09-16
+- [x] Compare the published 2.0 CRX with its source commit and review the actual 2.1 delta.
+- [x] Run `pnpm package`: **152 tests pass**; JavaScript syntax and manifest references validate.
+- [x] Verify all 45 archived files match `dist-store/` byte-for-byte and contain only the runtime allowlist.
+- [x] Regenerate the approved artwork with `pnpm assets:store`; update marketing version labels to 2.1 without changing captured product pixels.
+- [x] Upgrade the downloaded 2.0 runtime to the prepared 2.1 files at the same unpacked path in isolated Chrome for Testing 153. The extension ID stays the same; Saved entries, collection IDs, group definitions, pinned origins, hidden-pins and sort preferences are preserved exactly. Two pinned copies remain in two windows. Live membership clears as documented.
+- [x] Use Chrome's native **Pin to toolbar** toggle: pinning hides the tip and unpinning restores it. Dismissing with Enter focuses Search, updates a second window, and persists after a page reload and full browser restart. Saved data also survives the restart; the restarted panel logs no console errors or warnings.
+- [x] Check the support dialog at 280px, 320px and 420px in light/dark modes with no horizontal overflow; inspect both 320px captures. Scoped clipboard stubs verify the success message and the denied-write fallback selecting all 42 address characters, without changing the system clipboard. Escape returns focus to the support button. The automated QR test verifies the bundled recipient.
+- [x] Visually review the regenerated Store cover and both Store/social contact sheets; validate screenshot/social dimensions and RGB encoding, and verify source captures and provenance remain byte-identical. `git diff --check` passes.
 
-The [public item](https://chromewebstore.google.com/detail/fakbifeeblnopdhicpmhhmcdhmefphjp) showed version **1.1.1**, updated **2026-09-15**, with the lowercase title **ztab: Tab Manager** and **three screenshots**. Its overview describes the three product pillars and ends with the [Telegram community invitation](https://t.me/z08_studio).
+The reviewed runtime changes contain no identified release-blocking correctness issue. Release preparation corrects the stale 2.0 version/rollout documentation and hardcoded artwork labels, and documents the new pinning-tip preference in the privacy policy. Support and privacy URLs were rechecked through their GitHub redirects and returned HTTP 200.
 
-The public privacy link still points to `https://github.com/boundless-forest/pinallwindows/blob/main/PRIVACY_POLICY.md`. The prepared replacement, `https://github.com/boundless-forest/ztab/blob/main/PRIVACY_POLICY.md`, was verified to redirect to `z08-studio/ztab` and return HTTP 200. Update the Dashboard field; the working redirect does not mean the public listing has already changed.
+Earlier verification remains dated in [tests/README.md](tests/README.md). Windows/Linux, Chrome 123–129, and a Chrome Web Store-delivered update still require checks on those environments; a local unpacked upgrade does not establish Store delivery.
 
-Version 2.0.0 is newer than the audited 1.1.1 release. No upload, review submission, or 2.0.0 publication is established by this public audit.
+## Chrome Web Store rollout
 
-## Release materials
+Update the [existing item](https://chromewebstore.google.com/detail/fakbifeeblnopdhicpmhhmcdhmefphjp) in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole). Keep its extension ID so installed users receive the update.
 
-- Run `pnpm assets:store` to regenerate the icons and promotional assets from the checked-in sources.
-- Run `pnpm package` to create `ztab-2.0.0.zip` and the unpacked `dist-store/` directory.
-- Copy the listing fields and 2.0.0 release notes from [store-listing/LISTING.md](store-listing/LISTING.md).
-- Use the PNG files in `store-listing/assets/final/` and follow the screenshot guidance in [store-listing/ARTWORK.md](store-listing/ARTWORK.md).
-- Use [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the public privacy policy.
+1. Recheck the currently published version and upload the verified `ztab-2.1.0.zip` when publishing proceeds.
+2. Use the current fields and **2.1.0** release notes from [store-listing/LISTING.md](store-listing/LISTING.md). Keep **Ztab: Tab Manager** as the name and preserve the Telegram community invitation.
+3. Upload the 128px icon, five individual screenshots, and two promotional tiles from [store-listing/assets/final/](store-listing/assets/final/), following [ARTWORK.md](store-listing/ARTWORK.md). Do not upload review sheets or social images to the Store.
+4. Keep support at `https://github.com/boundless-forest/ztab/issues` and replace the legacy privacy field with `https://github.com/boundless-forest/ztab/blob/main/PRIVACY_POLICY.md`. The 2026-09-18 public listing still linked to `boundless-forest/pinallwindows` and showed **Website content** in its data disclosures; reconcile Dashboard fields with the current policy and listing declarations before submission.
+5. Save the package and listing changes, submit for review when authorized, and record the Dashboard state separately from public availability.
+6. After publication, verify the public version is **2.1.0**, the new assets are visible, and an installed update retains the ID and persistent data. Verify the toolbar action, assigned shortcut, and pinned synchronization. Update the README preparation note after public availability is confirmed.
 
-## Local verification — 2026-09-16
-
-- [x] Audit the public Store version: 1.1.1 on 2026-09-16; the prepared 2.0.0 version is newer.
-- [x] Confirm `manifest.json` and `package.json` both use 2.0.0; the packaged manifest requires Chrome 123 or later.
-- [x] Run `pnpm package`: all **144 tests** pass, packaged JavaScript syntax and manifest references validate, and the archive size and checksum are recorded above.
-- [x] Inspect the ZIP: `manifest.json` is at its root, all **41 files** match `dist-store/` byte-for-byte, and development docs, tests, dependencies, demo output, and store artwork are absent.
-- [x] Load the current 2.0.0 **source checkout** in an isolated Chrome for Testing **153.0.8010.12** profile. Verify the native side-panel opener using the actual macOS **Shift+Command+9** assignment.
-- [x] Verify real sample state for captures: **two windows, 11 tabs, four pinned tabs**, a **Launch project** group spanning both windows, and **six Saved pages** created through extension operations.
-- [x] Load `dist-store/` in a separate fresh Chrome profile: confirm version **2.0.0**, minimum Chrome **123**, assigned shortcut, and successful rendering of the Tabs document and options page with **no page errors**.
-- [x] Visually review all five **1280×800 RGB PNG** screenshots, including real keyboard focus, three selected group members, and six loaded Saved favicons. The four icon files and both promotional tiles remain byte-identical.
-- [x] Verify support and privacy-policy URLs resolve publicly through the repository redirect.
-
-Native side-panel screenshots come from the source checkout; the separate packaged-build smoke check loads its real extension documents. The earlier feature-level Chrome checks in [tests/README.md](tests/README.md) remain prior evidence; they do not establish a complete manual regression run against this release package.
-
-### Remaining pre-publication manual checks
-
-- [ ] Complete the keyboard, pinned-tab, and window-merge manual checks in [tests/README.md](tests/README.md) against the packaged build.
-- [ ] Manually verify inline grouping, stale-editor protection, batch actions, Saved icons, recent/manual sorting, and regular/incognito separation against that build.
-
-## Packaging instructions
-
-From the repository root:
-
-```sh
-pnpm install
-pnpm assets:store
-pnpm package
-```
-
-The package command:
-
-1. Runs the complete test suite.
-2. Verifies the manifest and package versions match.
-3. Copies only extension runtime files into `dist-store/`.
-4. Checks every packaged JavaScript file and manifest file reference.
-5. Creates `ztab-2.0.0.zip` with `manifest.json` at its root.
-6. Prints the archive size and SHA-256 checksum.
-
-The package includes the privacy policy and license, and excludes development docs, tests, dependencies, source-control metadata, and store artwork.
-
-## Chrome Web Store update
-
-Update the [existing Chrome Web Store item](https://chromewebstore.google.com/detail/fakbifeeblnopdhicpmhhmcdhmefphjp) in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole). Its extension ID is `fakbifeeblnopdhicpmhhmcdhmefphjp`.
-
-1. Confirm the published version, then upload the verified `ztab-2.0.0.zip` to that item when release approval is given.
-2. Use `Ztab: Tab Manager` as the listing name and replace the summary, description, release notes, icon, promotional tiles, and screenshots with the prepared materials. Use `Ztab` with a capital Z throughout product copy.
-3. Compare the packaged permissions with the currently published version. Review all permission justifications and privacy declarations in [store-listing/LISTING.md](store-listing/LISTING.md), including `tabGroups` for native groups during merging, `system.display` for local monitor labels, and `favicon` for Saved icons. `favicon` adds no extra permission warning when `tabs` is already present.
-4. Keep the support URL `https://github.com/boundless-forest/ztab/issues` and replace the legacy privacy field with `https://github.com/boundless-forest/ztab/blob/main/PRIVACY_POLICY.md`. Verify both pages remain public. Preserve the Telegram community invitation in the description.
-5. Save the upload and listing changes as a draft, then submit for review only when submission is authorized. Record the Dashboard status separately from public publication.
-6. After approval and publication, verify the public item shows version 2.0.0 and the current listing assets. Verify an installed update retains the extension ID, pinned-site data, and panel preferences, and that the toolbar action and shortcut still work.
-7. Remove the temporary 2.0.0 preparation note in the README only after public availability is confirmed.
-
-Use the existing item so the extension keeps its identity and existing installations receive an update. Keep historical `pinallwindows.*` storage keys and existing runtime message identifiers: they are compatibility details, not displayed product names. Do not publish a second Store item or ask existing users to uninstall and reinstall.
-
-Saved pages and group definitions remain in local storage. Live group membership, manual tab order, and recent-use records are tied to the browser session and reset when the extension updates or reloads. Group definitions are not saved sessions. Private groups and Saved use a separate temporary library.
-
-Version 2.0.0 requires **Chrome 123 or later** for the UI's [`light-dark()` color support](https://developer.chrome.com/blog/new-in-chrome-123). The [`minimum_chrome_version` manifest field](https://developer.chrome.com/docs/extensions/reference/manifest/minimum-chrome-version) keeps older Chrome installations on their previous compatible extension version until Chrome is upgraded.
-
-## Repository history and current checkout
-
-The repository was renamed from `boundless-forest/tabspan` to `boundless-forest/ztab` on 2026-09-06. The current repository is [z08-studio/ztab](https://github.com/z08-studio/ztab), and the verified local `origin` is `git@github.com:z08-studio/ztab.git`. Existing support links retain the `boundless-forest/ztab` address; verify its redirects before Store submission.
-
-For another clone that needs the current remote:
-
-```sh
-git remote set-url origin git@github.com:z08-studio/ztab.git
-```
-
-Use `https://github.com/z08-studio/ztab.git` for HTTPS clones. The current local checkout is `/Users/bear-wang/coding/ztab`; earlier `tabspan` paths are historical. Neither the checkout directory nor the GitHub repository owner changes the installed extension's Store identity.
+The current repository is [z08-studio/ztab](https://github.com/z08-studio/ztab); `origin` uses `git@github.com:z08-studio/ztab.git`. Public support links retain their established `boundless-forest/ztab` address. Verify redirects before Store submission. Historical `pinallwindows.*` keys and runtime message names are compatibility identifiers and must not be renamed for this release.

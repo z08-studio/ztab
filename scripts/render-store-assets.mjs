@@ -5,6 +5,8 @@ import { PNG } from "pngjs";
 import { Resvg } from "@resvg/resvg-js";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const { version } = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
+const releaseSeries = version.split(".").slice(0, 2).join(".");
 const sourceDirectory = join(projectRoot, "store-listing", "source");
 const finalDirectory = join(projectRoot, "store-listing", "assets", "final");
 const reviewDirectory = join(projectRoot, "store-listing", "assets", "review");
@@ -105,7 +107,7 @@ function storeHeader(number, title, dark = false) {
 function storeFooter(note, { dark = false, hero = false } = {}) {
   const fill = dark ? colors.lightMuted : colors.muted;
   return `${rule(48, 736, 1232, 736, dark ? colors.darkLine : colors.line)}
-    ${text(48, 768, hero ? "Ztab 2.0 / Built for Chrome" : slogan.text, { size: 14, fill })}
+    ${text(48, 768, hero ? `Ztab ${releaseSeries} / Built for Chrome` : slogan.text, { size: 14, fill })}
     ${text(1232, 768, note, { size: 11, fill, anchor: "end" })}`;
 }
 
@@ -234,7 +236,7 @@ function socialFooter(dark = false) {
   const fill = dark ? colors.lightMuted : colors.muted;
   return `${rule(64, 1367, 1016, 1367, dark ? colors.darkLine : colors.line)}
     ${text(64, 1409, slogan.text, { size: 21, fill })}
-    ${label(1016, 1409, "ZTAB 2.0", { size: 12, fill, anchor: "end" })}`;
+    ${label(1016, 1409, `ZTAB ${releaseSeries}`, { size: 12, fill, anchor: "end" })}`;
 }
 
 const socialCards = [
