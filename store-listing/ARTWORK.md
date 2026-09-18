@@ -1,72 +1,80 @@
-# Ztab store artwork
+# Ztab artwork
 
-## Approved identity and copy status
+## Approved identity and slogan
 
-Use the approved **B1 Tab Hub + P2 indigo** logo. The three fanned tabs converge at the base; standard colors are **#493567** and **#A996CC**. `source/icon.svg` holds the vector mark, `source/icon-small.svg` widens the gaps for 16–32px, and `source/icon-light.svg` provides the light variant for dark backgrounds.
+Use **B1 Tab Hub + P2 indigo**, with the approved **The last tab manager you’ll need.** slogan (option A). The vector symbol uses **#493567** and **#A996CC**. `source/icon.svg` is the standard symbol; `icon-small.svg` widens gaps at 16–32px; `icon-light.svg` is the approved light variant. `wordmark.svg` and `wordmark-light.svg` preserve the outlined Manrope Bold lockups from the approved brand kit.
 
-The refreshed artwork uses a pale background, restrained indigo accents and bundled Manrope typography. The first three screenshots give equal treatment to cross-window management, shared pinned tabs and keyboard interactions. The remaining screenshots explain bulk actions and Saved.
+The approved wording and line breaks live in `source/slogan.json`. [SLOGANS.md](SLOGANS.md) records usage, including the Chinese adaptation. Earlier candidates are retired from the active deliverables.
 
-The replacement slogan is **pending user selection**. Candidates and recommendations are in [SLOGANS.md](SLOGANS.md), with editable text in `source/slogans.json`. The two promo tiles currently preview **A: The last tab manager you’ll need.** Feature screenshot headlines do not depend on that selection. Do not treat the preview candidate as an approved replacement for the listing or options-page tagline.
+## Design system
 
-## Upload assets
+The layout uses typography, alignment and real product content as its main visual elements:
+
+- **Warm paper #F5F2ED** carries the windows, keyboard and Saved images. **Ink #292535** is the principal text color.
+- **Deep plum #382B47** gives the pinned-tabs image and marquee a darker rhythm; the small promo uses primary **#493567**. The light logo comes from the approved dark-background variant.
+- **Pale lilac #E8E0ED** distinguishes bulk actions. Secondary **#A996CC** remains in the logo rather than washing every page in purple.
+- **Instrument Serif Regular** gives English headlines a narrower, editorial shape. **Manrope Medium/Bold** handles explanations and small labels. **Noto Serif SC SemiBold**, bundled as the static subset `Ztab Editorial SC`, handles Chinese.
+- The approved logo remains outlined and unchanged. Typeface choices apply to marketing copy, not to the captured product interface.
+- Store artwork uses 48–56px outer margins, consistent top branding and a bottom rule. Different content gets different compositions: a split introduction, a broad pinned-list image, a keyboard sequence, a selection with a separate action bar, and Saved with concise marginal notes.
+- Use flat color, fine rules and proportional screenshots. Avoid ornamental gradients, blobs, oversized rounded cards, fake browser frames, glows and generic feature-pill grids.
+
+All render fonts are bundled under SIL Open Font Licenses; rendering does not depend on system fonts. See `source/fonts/README.md` for sources and the Chinese subset procedure.
+
+## Deliverables
 
 | Asset | Size | Location |
 | --- | ---: | --- |
 | Store icon | 128×128 | `../icons/icon128.png` |
-| Small promo preview | 440×280 | `assets/final/promo-small-440x280.png` |
-| Marquee promo preview | 1400×560 | `assets/final/promo-marquee-1400x560.png` |
-| Product screenshots | 1280×800 each | `assets/final/screenshots/` |
+| Small promo | 440×280 | `assets/final/promo-small-440x280.png` |
+| Marquee promo | 1400×560 | `assets/final/promo-marquee-1400x560.png` |
+| Five Store screenshots | 1280×800 each | `assets/final/screenshots/` |
+| Five Xiaohongshu images | 1080×1440 each | `assets/final/xiaohongshu/` |
 
-The image sizes follow the [Chrome Web Store image guidance](https://developer.chrome.com/docs/webstore/images) and [listing guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-listing), checked on 2026-09-18. Export marketing images as RGB PNGs without alpha. The extension icon retains transparency.
+The Store image sizes follow the [Chrome Web Store image guidance](https://developer.chrome.com/docs/webstore/images), verified on 2026-09-18. All twelve marketing images are RGB PNGs without alpha. Extension icons retain transparency.
 
-Upload the five screenshots in this order after visual approval:
+Use the Store screenshots in this order:
 
-1. `screenshot-01-side-panel.png` — **Every window. One clear view.** Public pages from two real Chrome windows, with switching and merging visible.
-2. `screenshot-02-pinned-tabs.png` — **Pin once. Ready in every window.** The real panel filtered to Wikipedia, showing pinned copies in two windows.
-3. `screenshot-03-keyboard.png` — **Find your tab. Keep your flow.** The actual keyboard-help dialog, including the current Mac opener shortcut.
-4. `screenshot-04-groups-bulk.png` — **Select together. Act together.** Four selected public pages across two windows, with the real action bar from that selection separately displayed and labeled.
-5. `screenshot-05-saved.png` — **Save it now. Find it later.** Wikipedia, NASA and Python in the user's public-material collection, inside the real Saved view.
+1. **Across windows** — approved slogan and public pages from two Chrome windows; switching and Merge here are visible.
+2. **Pinned tabs** — “Pin once.” The real Wikipedia search shows pinned copies in two windows.
+3. **Keyboard shortcuts** — “Stay in flow.” The actual help dialog accompanies a three-step keyboard sequence.
+4. **Bulk actions** — “A little less tab juggling.” Four public pages selected across windows, with their action bar separately displayed and labeled.
+5. **Saved pages** — “Worth keeping.” Wikipedia, NASA and Python in the real public-material collection.
 
-The overview at `assets/review/screenshots-overview.png` is a review sheet; do not upload it as a sixth screenshot. `assets/review/slogan-options.png` and `assets/review/slogans/` are copy review materials.
+Xiaohongshu retains the earlier narrative order: windows, pins, keyboard, Saved, bulk. The cover leads with Chinese copy and the approved English slogan. [XIAOHONGSHU.md](XIAOHONGSHU.md) supplies matching copy without outbound links.
 
-## Source provenance
+`assets/review/screenshots-overview.png`, `xiaohongshu-overview.png` and `brand-overview.png` are review sheets. Upload individual final images, not the overview sheets.
 
-These sources were captured on **2026-09-17** in the user's existing **Google Chrome**, using the installed **Ztab 2.0** and **Shottr**, for the Xiaohongshu materials in this task. This refresh reuses those already privacy-cropped captures. The public pages are Wikipedia, NASA, Python, Rust and MDN. No locally mocked website supplies the visible page titles or favicons.
+## Authentic screenshot sources
 
-The full original captures remain local outside this repository. Only the safe product regions are checked in. The user's earlier approval permits local capture followed by cropping; it does not make private browser chrome part of the deliverable.
+Sources were captured on **2026-09-17** in the user's **Google Chrome**, with installed **Ztab 2.0** and **Shottr**, for the earlier Xiaohongshu preparation. The current artwork reuses those verified privacy-cropped files. Public websites include Wikipedia, NASA, Python, Rust and MDN. No generated or locally mocked website supplies the page titles or favicons.
 
-Chrome's native side-panel header, including its old logo, is cropped away when present. The product's own Tabs/Saved navigation, search fields, lists, help dialog and action controls remain as captured. The old header is neither recolored nor replaced with a fabricated header.
+Full original captures stay local outside the repository and deliverable ZIP. Only safe product regions are checked in. Chrome's native side-panel header, including its old logo, was cropped away when present. That header is not recolored or replaced. Navigation, fields, rows, dialog and action controls stay exactly as captured.
 
-| Checked-in source | Size | Visible content |
+| Safe source | Size | Visible content |
 | --- | ---: | --- |
-| `side-panel-raw.png` | 1090×944 | Product navigation and public pages from two windows |
-| `pinned-tabs-raw.png` | 1090×544 | Real Wikipedia search and two pinned copies |
+| `side-panel-raw.png` | 1090×944 | Navigation and public pages from two windows |
+| `pinned-tabs-raw.png` | 1090×544 | Wikipedia search and two pinned copies |
 | `keyboard-raw.png` | 1020×1030 | Complete keyboard-help dialog |
 | `groups-bulk-raw.png` | 1090×760 | Four public pages selected across windows |
-| `bulk-toolbar-raw.png` | 1090×170 | Action bar from the same four-page selection |
-| `saved-raw.png` | 1090×704 | Product navigation and public collection in Saved |
+| `bulk-toolbar-raw.png` | 1090×170 | Action bar from the same selection |
+| `saved-raw.png` | 1090×704 | Navigation and the public collection in Saved |
 
-All sources live in `assets/source/screenshots/`. `capture-provenance.json` records their original safe-source names, additional crop coordinates and dimensions. The keyboard dialog has its original background and shadow. The Saved collection keeps its real Chinese name, **公开资料**, rather than an edited label.
+All sources live in `assets/source/screenshots/`. `capture-provenance.json` records the original safe-source names, crop coordinates and dimensions. The keyboard dialog keeps its own backdrop and shadow. Saved keeps its genuine collection name, **公开资料**.
 
-## Composition rules
+## Content and privacy rules
 
-- Use genuine product state and public websites. Do not fabricate controls, rows, counts, page content or results.
-- Exclude browser account controls, profile photos, private tab titles, private saved items, bookmarks and desktop content from committed sources and deliverables.
-- Use proportional scaling; never stretch a capture. Do not use image generation to modify product screenshots.
-- Put branding, feature copy and captions outside the captures. Decorative cards and shadows belong to the marketing layout, not the product UI.
-- The bulk image contains two separate crops from the same selection. Keep the visible **ACTION BAR · SAME SELECTION** label between them; do not join them into a fake continuous panel.
-- Treat the assigned keyboard shortcut as an example. Users can customize the panel opener, and arrow keys / Enter act on the focused list.
-- Retain equal emphasis on windows, pins and keyboard use. Describe Saved as a local page library, not cloud sync or saved browser sessions.
-- Do not add external calls to action, QR codes or contact details to these images. Public domains shown by the actual product are retained.
+- Never reconstruct or alter rows, counts, controls, icons or results inside screenshots. Use proportional scaling without distortion.
+- Keep account controls, profile photos, private page titles, bookmarks, unrelated saved items and desktop content out of deliverables.
+- Add brand and explanatory text outside the product captures.
+- Keep the bulk action bar visibly separate from the list. The Store label is **ACTION BAR / SAME SELECTION**; the social label states that the bar was captured separately from the same selection.
+- Treat keyboard assignments as examples. The panel opener is customizable; arrows and Enter act on the focused list.
+- Give windows, shared pins and keyboard use equal weight. Saved is a local page library, not cross-device sync or saved browser sessions.
+- No links, QR codes, contact details or external calls to action in images or Xiaohongshu post copy. Preserve public domains shown by the real product.
 
 ## Rebuilding and verification
 
-Run `pnpm assets:store`. The renderer validates source dimensions against `capture-provenance.json` before writing outputs, then regenerates four extension icons, five screenshots, two promo previews, six small slogan tiles and two review boards.
+Run `pnpm assets:store`. The script validates capture dimensions and the approved slogan, then regenerates four icons, twelve marketing images and three overview sheets. Existing approved icon geometry is unchanged.
 
-The six screenshot inputs have intentionally different dimensions because they are safe crops of specific real states, not one artificial viewport. Update the source and its recorded dimensions together after verifying a new capture. Keep the capture dates and source notes accurate.
+Review each final image at full size and the Store set at its 640×400 display scale. Check PNG dimensions and color types, confirm source integrity, and run `pnpm package` plus `git diff --check`. Packaging includes the updated icon and options-page slogan but does not upload to the Developer Dashboard or publish anything.
 
-The five Store screenshots and two promo previews use bundled Manrope fonts. The bilingual slogan review board additionally uses available system fonts for Chinese. Manrope's SIL Open Font License is preserved in `source/fonts/OFL.txt`.
-
-Visually inspect each final image at full size, confirm every output dimension and PNG color type, and run `pnpm test` and `git diff --check`. Repackage after changing extension icons. A local render, package, branch or PR does not upload images to the Developer Dashboard or establish Store publication.
-
-The old local sample server and historical Tab Flow backgrounds remain development/history material. They are not inputs to this refreshed artwork.
+Historical Tab Flow sources and old local review packages are not inputs to this artwork. The active final package contains only the chosen identity and slogan.

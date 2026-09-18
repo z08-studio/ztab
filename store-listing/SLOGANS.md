@@ -1,27 +1,18 @@
-# Ztab slogan options
+# Ztab slogan
 
-The approved visual identity is **B1, Tab Hub, in P2 indigo**: `#493567` and `#A996CC`. The slogan remains open for selection. The promo previews currently use **A**; this does not finalize the wording in the listing or options page.
+**The last tab manager you’ll need.**
 
-| Option | English | 中文意译 | Tone |
-| --- | --- | --- | --- |
-| A | **The last tab manager you’ll need.** | 用过，就不想再换的标签页管理器。 | 自信直接，最贴近原始定位 |
-| B | **The tab manager you’ll want to keep.** | 让你愿意一直用下去的标签页管理器。 | 温和，强调长期使用 |
-| C | **Every tab. Every window. In order.** | 每个标签，每个窗口，都井井有条。 | 功能清晰，突出跨窗口管理 |
-| D | **Less tab chaos. More focus.** | 少些标签纷扰，多些专注。 | 简短，强调用户收益 |
-| E | **Your tabs, thoughtfully managed.** | 每个标签，都被用心打理。 | 成熟克制，呼应交互细节 |
-| F | **Your browser, a little more organized.** | 让你的浏览器，多一分井然有序。 | 轻松友好，保留亲和力 |
+Option **A** is the final user-approved slogan, paired with the approved **B1 Tab Hub + P2 indigo** identity. The earlier options are retired from the active artwork and remain in Git history.
 
-**Recommendation:** A is closest to the requested long-term, definitive-choice positioning. E is the quieter alternative and fits the restrained P2 visual identity. C can also work as supporting copy beneath a brand slogan.
+Chinese adaptation: **用过，就不想再换的标签页管理器。**
 
-Use **tab manager**, not **top manager**, in English product copy. The Chinese lines are adaptations of the meaning rather than mandatory literal translations.
+## Usage
 
-## Review assets
+- Preserve the exact English wording and final period. Line breaks may change with the format.
+- Use the slogan in the README, options header, Store positioning and description, promotional tiles, and feature-image footers. The first screenshot and social cover feature it as the headline.
+- Keep feature headlines concrete: windows, shared pins, keyboard use, bulk actions, and Saved. A feature headline supports the slogan; it does not replace it.
+- Keep the Store summary descriptive: “Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.”
+- Use **tab manager**, not **top manager**, in English product copy.
+- Do not add URLs, QR codes, or external calls to action to the social artwork or Xiaohongshu post.
 
-- `assets/review/slogan-options.png`: six options with Chinese explanations.
-- `assets/review/slogans/slogan-A-440x280.png` through `slogan-F-440x280.png`: each option in the actual small promo layout.
-- `assets/final/promo-small-440x280.png` and `promo-marquee-1400x560.png`: previews using the candidate named by `previewCandidate`.
-- `assets/review/screenshots-overview.png`: the five feature screenshots, whose headlines are independent of the brand slogan.
-
-Candidate text and line breaks live in `source/slogans.json`. Run `pnpm assets:store` after changing the preview candidate. Once wording is selected, update this status, the positioning and opening line in `LISTING.md`, the README positioning, and the options-page tagline together.
-
-The Store summary can remain descriptive: “Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.” This keeps the listing clear even when the brand slogan is more expressive.
+The renderer reads the approved wording and supported line breaks from `source/slogan.json`. It rejects a non-approved status or line breaks that change the text. Regenerate all artwork with `pnpm assets:store`.

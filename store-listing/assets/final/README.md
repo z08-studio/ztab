@@ -1,17 +1,25 @@
-# Ztab Chrome Web Store assets
+# Ztab final artwork
 
-Brand: approved **B1 Tab Hub + P2 indigo**, with standard colors `#493567` and `#A996CC`.
+Identity: **B1 Tab Hub + P2 indigo**. Slogan: **The last tab manager you’ll need.**
 
-The five screenshots are ready for visual review. Both promotional tiles currently preview slogan **A: The last tab manager you’ll need.** Slogan selection is pending; see `../../SLOGANS.md` and `../review/slogan-options.png` before uploading promo tiles.
+## Chrome Web Store
 
-- `promo-small-440x280.png`: small promotional tile.
-- `promo-marquee-1400x560.png`: marquee promotional preview with a real public-site panel and all three product strengths.
-- `screenshots/screenshot-01-side-panel.png`: real public pages from two Chrome windows.
-- `screenshots/screenshot-02-pinned-tabs.png`: pinned tabs synchronized across windows.
-- `screenshots/screenshot-03-keyboard.png`: the actual keyboard-help dialog and assigned Mac shortcut.
-- `screenshots/screenshot-04-groups-bulk.png`: four selected public pages, with the action bar shown separately and labeled as the same selection.
-- `screenshots/screenshot-05-saved.png`: saved pages with favicons in an independent local library.
+- `promo-small-440x280.png`: 440×280 promotional tile.
+- `promo-marquee-1400x560.png`: 1400×560 marquee tile.
+- `screenshots/screenshot-01-side-panel.png`: 1280×800; brand introduction and cross-window management.
+- `screenshots/screenshot-02-pinned-tabs.png`: 1280×800; Wikipedia pinned in two windows.
+- `screenshots/screenshot-03-keyboard.png`: 1280×800; actual keyboard-help dialog.
+- `screenshots/screenshot-04-groups-bulk.png`: 1280×800; four selected pages and the separately labeled action bar.
+- `screenshots/screenshot-05-saved.png`: 1280×800; the real Saved collection of public pages.
 
-Use the repository's `icons/icon128.png` as the Store icon. It now uses the approved three-tab P2 mark; 16px and 32px icons use wider spacing for legibility.
+Upload the five screenshots in numeric order. Use the repository's `icons/icon128.png` for the Store icon. The overview sheets in `../review/` are for reviewing the set, not Store upload.
 
-All five 1280×800 screenshots and both promo tiles are opaque RGB PNGs with bundled Manrope typography. Captures come from the user's Chrome with installed Ztab, taken through Shottr for the earlier Xiaohongshu materials. They show Wikipedia, NASA, Python, Rust and MDN; the keyboard image shows real Ztab help. Browser account controls, private tabs, and unrelated saved pages are excluded. Native Chrome headers are cropped away; controls and rows are never reconstructed. Rebuild with `pnpm assets:store`, and follow `../../ARTWORK.md` for provenance and layout rules. Rendering does not upload or publish anything.
+## Xiaohongshu
+
+`xiaohongshu/` contains five 1080×1440 Chinese portrait images, ordered as windows, pins, keyboard, Saved, and bulk actions. The cover and footer use the final slogan; all images use the approved identity. `../../XIAOHONGSHU.md` contains matching post copy without outbound links.
+
+All twelve marketing images are opaque RGB PNGs. Instrument Serif headlines, Manrope details, and a licensed Noto Serif SC subset provide consistent typography without relying on system fonts. The layout uses warm paper, ink, and the approved indigo palette.
+
+Product images are privacy-cropped captures from the user's Chrome and installed Ztab 2.0. They show public Wikipedia, NASA, Python, Rust and MDN pages. Browser account controls and private pages are excluded. The real UI pixels are scaled proportionally, never reconstructed.
+
+Rebuild with `pnpm assets:store`. See `../../ARTWORK.md` for provenance, exact design rules and verification. The files are prepared locally; rendering does not upload or publish them.
