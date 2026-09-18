@@ -1,10 +1,10 @@
 # Ztab store listing
 
-Prepared English copy for the **2.1.0** update to the existing Chrome Web Store item, following the published 2.0.0 release. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the 2.1.0 listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
+Prepared English copy for the **2.1.1** update to the existing Chrome Web Store item, following the published 2.0.0 release. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the 2.1.1 listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
 
 ## Product name
 
-Ztab: Tab Manager
+Ztab: The last tab manager you’ll need.
 
 ## Positioning
 
@@ -79,10 +79,11 @@ JOIN THE COMMUNITY
 
 Have a question, found a bug, or have an idea for Ztab? Join our Telegram community: https://t.me/z08_studio
 
-## Release notes — 2.1.0
+## Release notes — 2.1.1
 
 Ztab 2.1 refreshes the app's identity and makes it easier to keep Ztab within reach.
 
+• Updates the extension and Store name to Ztab: The last tab manager you’ll need.
 • Introduces the indigo Tab Hub icon and a consistent Ztab identity
 • Improves the 16px and 32px toolbar icons for clearer recognition
 • Adds a toolbar pinning tip that disappears when Ztab is pinned and remembers when you dismiss it

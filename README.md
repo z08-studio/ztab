@@ -12,7 +12,7 @@ Ztab brings your Chrome windows together with three everyday capabilities:
 
 Ztab was previously named TabSpan. The capital Z follows the Z-series naming convention used by Zdraft.
 
-**Version 2.0.0 is available in the Chrome Web Store; 2.1.0 is being prepared.** Version 2.1 refreshes the Ztab identity and toolbar icons, adds an optional support dialog, and helps users pin Ztab for quick access. Inline groups, batch actions, Saved, and recent sorting were introduced in 2.0. See the [release guide](CHROME_WEB_STORE.md) for the verified baseline, changes, and rollout status.
+**Version 2.1.0 is released on GitHub; 2.1.1 prepares the Chrome Web Store name “Ztab: The last tab manager you’ll need.”** The Store was last verified at 2.0.0 on 2026-09-18. Version 2.1 refreshes the Ztab identity and toolbar icons, adds an optional support dialog, and helps users pin Ztab for quick access. Inline groups, batch actions, Saved, and recent sorting were introduced in 2.0. See the [release guide](CHROME_WEB_STORE.md) for the verified baseline, changes, and rollout status.
 
 Ztab requires **Chrome 123 or later**. Older Chrome installations remain on their previous compatible extension version until Chrome is upgraded.
 
