@@ -35,6 +35,12 @@ Clipboard copying writes the exact configured address and reports success. When 
 
 `pnpm package` passes all 145 tests and validates the packaged JavaScript. The QR test decodes the bundled image and checks that its payload matches the copy recipient. No payment website or service configuration is required. Phone scanning and a real transfer remain unverified. UI references: [light support dialog](../docs/screenshots/base-usdc-support.png) and [dark support dialog](../docs/screenshots/base-usdc-support-dark.png).
 
+## Toolbar icon verification
+
+Verified on 2026-09-18: the 16px and 32px PNGs use the optically fitted small SVG with tighter padding, simplified silhouettes, wider gaps, and a darker secondary purple. At 16px, the visible bounds grow from roughly 14×12 to 16×14 pixels. Reviewed both PNG sizes at their actual size on white, gray, and dark backgrounds; see the [before/after comparison](../docs/screenshots/toolbar-icon-comparison.png).
+
+`pnpm assets:store` regenerates the icons; the 48px/128px icons and marketing images remain unchanged. In an isolated Chrome for Testing profile, pinned the updated extension to the native toolbar and verified that **Open Ztab** opens its side panel. `pnpm package` passes all 145 tests and validates the packaged JavaScript.
+
 ## Final PR review
 
 Reviewed on 2026-09-16. `pnpm package` passes 143 tests and validates every packaged JavaScript file; `git diff --check` passes. The review fixed stale group-editor assignments, tab-replacement races during queued browser actions, overflowing destination menus, and keyboard focus loss after dialog saves. Obsolete helpers and screenshots from the superseded three-view layout were removed.

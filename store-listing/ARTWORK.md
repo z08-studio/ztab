@@ -2,7 +2,7 @@
 
 ## Approved identity and slogan
 
-Use **B1 Tab Hub + P2 indigo**, with the approved **The last tab manager you’ll need.** slogan (option A). The vector symbol uses **#493567** and **#A996CC**. `source/icon.svg` is the standard symbol; `icon-small.svg` widens gaps at 16–32px; `icon-light.svg` is the approved light variant. `wordmark.svg` and `wordmark-light.svg` preserve the outlined Manrope Bold lockups from the approved brand kit.
+Use **B1 Tab Hub + P2 indigo**, with the approved **The last tab manager you’ll need.** slogan (option A). The standard vector symbol uses **#493567** and **#A996CC**. `source/icon.svg` is the standard symbol; `icon-small.svg` is optically fitted for 16–32px, with less padding, taller simplified silhouettes, wider gaps, and a darker **#927DB8** secondary tone for visibility on gray browser toolbars. `icon-light.svg` is the approved light variant. `wordmark.svg` and `wordmark-light.svg` preserve the outlined Manrope Bold lockups from the approved brand kit.
 
 The approved wording and line breaks live in `source/slogan.json`. [SLOGANS.md](SLOGANS.md) records usage, including the Chinese adaptation. Earlier candidates are retired from the active deliverables.
 
@@ -14,7 +14,7 @@ The layout uses typography, alignment and real product content as its main visua
 - **Deep plum #382B47** gives the pinned-tabs image and marquee a darker rhythm; the small promo uses primary **#493567**. The light logo comes from the approved dark-background variant.
 - **Pale lilac #E8E0ED** distinguishes bulk actions. Secondary **#A996CC** remains in the logo rather than washing every page in purple.
 - **Instrument Serif Regular** gives English headlines a narrower, editorial shape. **Manrope Medium/Bold** handles explanations and small labels. **Noto Serif SC SemiBold**, bundled as the static subset `Ztab Editorial SC`, handles Chinese.
-- The approved logo remains outlined and unchanged. Typeface choices apply to marketing copy, not to the captured product interface.
+- The approved wordmark remains outlined and unchanged. Typeface choices apply to marketing copy, not to the captured product interface.
 - Store artwork uses 48–56px outer margins, consistent top branding and a bottom rule. Different content gets different compositions: a split introduction, a broad pinned-list image, a keyboard sequence, a selection with a separate action bar, and Saved with concise marginal notes.
 - Use flat color, fine rules and proportional screenshots. Avoid ornamental gradients, blobs, oversized rounded cards, fake browser frames, glows and generic feature-pill grids.
 
@@ -24,6 +24,7 @@ All render fonts are bundled under SIL Open Font Licenses; rendering does not de
 
 | Asset | Size | Location |
 | --- | ---: | --- |
+| Toolbar icons | 16×16 and 32×32 | `../icons/icon16.png`, `../icons/icon32.png` |
 | Store icon | 128×128 | `../icons/icon128.png` |
 | Small promo | 440×280 | `assets/final/promo-small-440x280.png` |
 | Marquee promo | 1400×560 | `assets/final/promo-marquee-1400x560.png` |
@@ -73,7 +74,7 @@ All sources live in `assets/source/screenshots/`. `capture-provenance.json` reco
 
 ## Rebuilding and verification
 
-Run `pnpm assets:store`. The script validates capture dimensions and the approved slogan, then regenerates four icons, twelve marketing images and three overview sheets. Existing approved icon geometry is unchanged.
+Run `pnpm assets:store`. The script validates capture dimensions and the approved slogan, then regenerates four icons, twelve marketing images and three overview sheets. The 16px and 32px icons use the optically fitted small variant; 48px, 128px, and marketing artwork use the standard approved geometry.
 
 Review each final image at full size and the Store set at its 640×400 display scale. Check PNG dimensions and color types, confirm source integrity, and run `pnpm package` plus `git diff --check`. Packaging includes the updated icon and options-page slogan but does not upload to the Developer Dashboard or publish anything.
 
