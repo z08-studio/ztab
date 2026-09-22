@@ -102,6 +102,19 @@ This smoke check does not verify store-delivered upgrades, Windows/Linux binding
 
 ## Inline groups and Saved checks in Chrome
 
+### New Tab checks
+
+Verified on 2026-09-22 with Chrome for Testing 153.0.8010.12 on macOS in an isolated profile. The native side panel created tabs in its host and another window, with the destination selected and the address bar focused. The actual extension page also passed no-results search, Saved query preservation, selection/Move exit, Enter/Space activation, view-tab semantics, visible keyboard focus, and duplicate/pending-click checks. Simulated creation and refresh failures preserved the expected view or reported that creation had already succeeded; the page logged no console errors or warnings.
+
+Light/dark layouts passed at 280px, 320px, and 400px, including intentionally long display-label fixtures. The 158-test suite covers host/target validation, private-mode boundaries, unavailable storage, creation rejection, and focus failure after successful creation. Live incognito creation, third-party New Tab overrides, and Windows/Linux behavior were not manually checked. UI references: [Tabs](../docs/screenshots/new-tab.png), [dark Tabs](../docs/screenshots/new-tab-dark.png), and [Saved](../docs/screenshots/new-tab-saved.png).
+
+1. Use **+** beside Tabs and Saved. Verify one unpinned, active tab opens in the panel's host window using Chrome's configured New Tab page. It must not join an inline group. Keep the host fixed when another window gains focus.
+2. Use **+** on another window's heading. Verify creation and focus in that window; existing tabs stay in place. The current-window heading has no duplicate **+**, and the top action remains outside the two-item view tablist.
+3. Create from Saved, a tab search with no results, selection mode, and Move mode. On success, return to Tabs, clear only the Tabs query, leave selection/Move mode, and reveal the new row. A Saved query should still be present when returning to Saved.
+4. Use Tab, Enter, and Space on both buttons. Check visible keyboard focus, readable destination tooltips, and no horizontal overflow at 280px, 320px, and 400px in light/dark styles with long display names. Window actions must remain visible when all its tabs are grouped or hidden pinned tabs.
+5. Check repeated clicks while creation is pending and double-click the action: only one tab should open. Simulate a closed target or creation rejection: preserve the current view/search and show an error. If creation succeeds but focus or list refresh fails, say that the tab was created without creating another one.
+6. Verify popup/floating targets and cross-mode requests are rejected, while creation between normal windows in the same private session works. New Tab does not require a new extension permission.
+
 ### Recent sorting verification
 
 Verified on 2026-09-16 in isolated Chrome for Testing 153.0.8010.12 on macOS: Recently used is the default; a focused tab visit updates its section and row priority after Refresh. A background-window activation did not create a focused-visit record; focusing that window did, with Playwright focus emulation disabled. Pinned positions, native tab indices, window IDs, and Chrome group IDs stayed unchanged.
