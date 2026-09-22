@@ -112,14 +112,35 @@ svg {
     background: light-dark(#fcf0ee, #402b29);
 }
 
-.view-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
+.view-navigation {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     min-height: 46px;
     padding: 7px 10px;
     background: var(--nav);
     color: var(--nav-text);
+}
+
+.view-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
+}
+
+.new-tab-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 5px;
+    background: var(--nav-selected);
+    color: #ffffff;
+}
+
+.new-tab-button:hover {
+    background: color-mix(in srgb, var(--nav-selected) 80%, #ffffff);
+    color: #ffffff;
 }
 
 .view-tabs button {
@@ -146,7 +167,7 @@ svg {
     background: var(--nav-selected);
 }
 
-.view-tabs button:focus-visible {
+.view-navigation button:focus-visible {
     outline-color: #d3b7f4;
     outline-offset: -2px;
 }
@@ -611,6 +632,13 @@ input::placeholder {
     align-items: center;
     gap: 6px;
     min-width: 0;
+}
+
+.window-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
 }
 
 .window-title {

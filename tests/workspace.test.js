@@ -4,7 +4,7 @@ import { applyWorkspaceOperation, emptyWorkspace, orderedWorkspaceTabs, readWork
 import { createWorkspaceController } from "../src/background/workspace-controller.js";
 import { STORAGE_BROWSER_SESSION_KEY, STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "../src/background/constants.js";
 
-function harness() {
+function harness(apiOverrides = {}) {
     let sequence = 0;
     const storage = { local: {}, session: {} };
     const windows = [
@@ -41,9 +41,78 @@ function harness() {
             return tab;
         }
     };
-    const controller = () => createWorkspaceController({ api, chrome: {}, createId: () => `id-${++sequence}`, now: () => controls.now });
+    const controller = () => createWorkspaceController({ api: { ...api, ...apiOverrides }, chrome: {}, createId: () => `id-${++sequence}`, now: () => controls.now });
     return { storage, windows, effects, controls, controller: controller(), restart: controller };
 }
+
+test("New Tab defaults to the panel's host even when another window has focus", async () => {
+    const h = harness();
+    h.windows[1].focused = true;
+    const result = await h.controller.request(1, { action: "create-tab" });
+    assert.equal(h.windows[0].tabs.at(-1).id, result.tabId);
+    assert.equal(result.warning, null);
+    assert.deepEqual(h.effects, [
+        ["createTab", { windowId: 1, active: true, pinned: false }],
+        ["updateWindow", 1, { focused: true }]
+    ]);
+});
+
+test("New Tab targets another window without requiring library reads or writes", async () => {
+    const h = harness();
+    h.controls.beforeRead = () => { throw new Error("Storage unavailable"); };
+    h.controls.failWrite = true;
+    const result = await h.controller.request(1, { action: "create-tab", targetWindowId: 2 });
+    assert.equal(h.windows[1].tabs.at(-1).id, result.tabId);
+    assert.deepEqual(h.effects, [
+        ["createTab", { windowId: 2, active: true, pinned: false }],
+        ["updateWindow", 2, { focused: true }]
+    ]);
+    assert.deepEqual(h.storage, { local: {}, session: {} });
+});
+
+test("New Tab rejects closed, popup, floating, and invalid targets without creating a fallback tab", async () => {
+    const h = harness();
+    h.windows.push({ id: 4, type: "popup" }, { id: 5, type: "normal", alwaysOnTop: true });
+    h.windows.splice(1, 1);
+    for (const targetWindowId of [2, 4, 5, 999, -1, "1"])
+        await assert.rejects(h.controller.request(1, { action: "create-tab", targetWindowId }), /destination window/);
+    assert.deepEqual(h.effects, []);
+});
+
+test("New Tab validates its host and keeps normal and private windows separate", async () => {
+    const h = harness();
+    h.windows.push({ id: 4, type: "normal", incognito: true, tabs: [] }, { id: 5, type: "popup" });
+    for (const hostId of [999, 5])
+        await assert.rejects(h.controller.request(hostId, { action: "create-tab", targetWindowId: 1 }), /panel's window/);
+    await assert.rejects(h.controller.request(1, { action: "create-tab", targetWindowId: 3 }), /destination window/);
+    await assert.rejects(h.controller.request(3, { action: "create-tab", targetWindowId: 1 }), /destination window/);
+    assert.deepEqual(h.effects, []);
+    const result = await h.controller.request(3, { action: "create-tab", targetWindowId: 4 });
+    assert.equal(h.windows[3].tabs[0].id, result.tabId);
+    assert.equal(h.effects[0][1].windowId, 4);
+});
+
+test("New Tab reports creation failure without focusing or falling back to another window", async () => {
+    const attempts = [];
+    const h = harness({ createTab: async (info) => {
+        attempts.push(info);
+        throw new Error("Window closed during creation");
+    } });
+    await assert.rejects(h.controller.request(1, { action: "create-tab", targetWindowId: 2 }), /Window closed/);
+    assert.deepEqual(attempts, [{ windowId: 2, active: true, pinned: false }]);
+    assert.deepEqual(h.effects, []);
+    assert.equal((await h.controller.request(1, { action: "read" })).workspace.saved.length, 0);
+});
+
+test("New Tab preserves a successful creation when focusing its window fails", async () => {
+    const h = harness({ updateWindow: async () => { throw new Error("Focus refused"); } });
+    const result = await h.controller.request(1, { action: "create-tab", targetWindowId: 2 });
+    assert.match(result.warning, /New tab created.*could not focus/);
+    assert.equal(h.windows[1].tabs.at(-1).id, result.tabId);
+    assert.equal(h.windows[1].tabs.length, 2);
+    assert.equal(h.effects.length, 1);
+    assert.equal(h.effects[0][0], "createTab");
+});
 
 test("Saved uses full URLs, deduplicates simultaneous saves, and stays independent of open tabs", async () => {
     const h = harness();

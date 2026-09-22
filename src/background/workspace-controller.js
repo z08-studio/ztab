@@ -81,6 +81,23 @@ export function createWorkspaceController(dependencies = {}) {
         if (!host)
             throw new Error("The panel's window is no longer available. Reopen Ztab in a regular window.");
         const incognito = host.incognito === true;
+        if (operation.action === "create-tab") {
+            const targetId = operation.targetWindowId ?? host.id;
+            const target = windows.find((win) => win.id === targetId && isSyncWindow(win) && (win.incognito === true) === incognito);
+            if (!target)
+                throw new Error("The destination window is no longer available. Refresh Ztab and choose another window.");
+            // Omitting the URL respects Chrome's configured New Tab page.
+            // Creation needs no library write that could fail after opening a tab.
+            const tab = await api.createTab({ windowId: target.id, active: true, pinned: false });
+            let warning = null;
+            try {
+                await api.updateWindow(target.id, { focused: true });
+            }
+            catch {
+                warning = "New tab created, but Chrome could not focus its window. Select the tab to switch to it.";
+            }
+            return { tabId: tab.id, warning };
+        }
         const tabs = scopedTabs(windows, incognito);
         const record = await load(incognito, await sessionId());
         let workspace = record.workspace;
