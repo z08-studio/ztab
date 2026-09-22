@@ -9,10 +9,13 @@
   </head>
   <body class="side-panel">
     <main class="app">
-      <nav class="view-tabs" role="tablist" aria-label="Ztab views">
-        <button id="nav-tabs" role="tab" aria-controls="workspace-panel" aria-selected="true" data-view="tabs" type="button">Tabs <span id="tabs-count" class="count"></span></button>
-        <button id="nav-saved" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="saved" tabindex="-1" type="button">Saved <span id="saved-count" class="count"></span></button>
-      </nav>
+      <div class="view-navigation">
+        <nav class="view-tabs" role="tablist" aria-label="Ztab views">
+          <button id="nav-tabs" role="tab" aria-controls="workspace-panel" aria-selected="true" data-view="tabs" type="button">Tabs <span id="tabs-count" class="count"></span></button>
+          <button id="nav-saved" role="tab" aria-controls="workspace-panel" aria-selected="false" data-view="saved" tabindex="-1" type="button">Saved <span id="saved-count" class="count"></span></button>
+        </nav>
+        <button id="new-tab" class="icon-button new-tab-button" type="button" aria-label="New tab in current window" title="New tab in current window" disabled></button>
+      </div>
       <aside id="toolbar-pin-tip" class="toolbar-pin-tip" aria-label="Pin Ztab to the toolbar" hidden>
         <div class="toolbar-pin-tip-copy">
           <strong>Pin Ztab for quick access</strong>

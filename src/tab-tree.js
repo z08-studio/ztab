@@ -22,7 +22,7 @@ const state = {
 };
 const elements = Object.fromEntries([
     "summary", "refresh", "keyboard-help", "mode-bar", "status", "tab-list", "search",
-    "saved-tools", "save-current", "collection", "new-collection", "workspace-panel", "ungroup-drop", "drag-announcement", "sort-tabs"
+    "saved-tools", "save-current", "collection", "new-collection", "workspace-panel", "ungroup-drop", "drag-announcement", "sort-tabs", "new-tab"
 ].map((id) => [id, document.getElementById(id)]));
 let refreshTimer = null;
 let refreshGeneration = 0;
@@ -237,6 +237,7 @@ function windowHeading(win, tabs) {
     }
     heading.append(left);
     if (!selection.active() && !win.isCurrentWindow && state.currentWindowId !== null) {
+        const actions = node("span", "window-actions");
         const current = state.tree.find((item) => item.isCurrentWindow);
         const label = `Merge all tabs from ${win.label} into Current window`;
         const merge = button(state.mergingWindowId === win.id ? "Merging…" : "Merge here", label, () => mergeWindow(win.id), "text-button merge-action");
@@ -244,7 +245,12 @@ function windowHeading(win, tabs) {
         merge.disabled = !allowed || isBusy();
         merge.title = allowed ? label : "Merge is available between regular windows of the same browsing mode. Expand compact windows to merge them.";
         merge.dataset.focusKey = `merge-${win.id}`;
-        heading.append(merge);
+        const create = button("", `New tab in ${win.label}`, (event) => {
+            if (event.detail < 2) return createNewTab(win.id);
+        }, "icon-button", "plus");
+        create.dataset.focusKey = `new-tab-${win.id}`;
+        actions.append(merge, create);
+        heading.append(actions);
     }
     return heading;
 }
@@ -278,7 +284,7 @@ function renderTabs() {
         const tabs = section.tabs.filter((tab) => matchesTab(tab, query));
         if (query && !tabs.length)
             continue;
-        // A window with all tabs grouped or hidden still needs its merge action.
+        // Keep window actions available even when every tab is grouped or hidden.
         if (!tabs.length && (win.isCurrentWindow || selection.active()))
             continue;
         fragment.append(windowHeading(win, tabs));
@@ -473,6 +479,7 @@ function render() {
     const sortLabel = state.sortMode === "recent" ? "Recently used" : "Manual order";
     elements["sort-tabs"].hidden = state.view !== "tabs" || state.movingTabId !== null;
     elements["sort-tabs"].disabled = isBusy() || selection.active();
+    elements["new-tab"].disabled = isBusy() || state.currentWindowId === null;
     elements["sort-tabs"].setAttribute("aria-label", `Sort tabs: ${sortLabel}`);
     elements["sort-tabs"].title = `Sort tabs: ${sortLabel}${state.sortMode === "recent" ? ". Choose Manual order to drag tabs into position." : ""}`;
     document.getElementById("tabs-count").textContent = String(allTabs().length);
@@ -582,6 +589,40 @@ async function activateTab(tabId) {
         return;
     await updateTab(tab.id, { active: true });
     await updateWindow(tab.windowId, { focused: true });
+}
+
+async function createNewTab(targetWindowId = state.currentWindowId) {
+    if (isBusy() || state.currentWindowId === null)
+        return;
+    state.busy = true;
+    refreshGeneration += 1;
+    clearTimeout(refreshTimer);
+    dragController?.cancel();
+    closeMenu();
+    setStatus("");
+    render();
+    let response;
+    try {
+        response = await sendMessage({ type: MESSAGE_WORKSPACE, windowId: state.currentWindowId,
+            operation: { action: "create-tab", targetWindowId } });
+    }
+    finally {
+        state.busy = false;
+        render();
+        if (!response) scheduleRefresh();
+    }
+    state.query.tabs = "";
+    state.sortNow = true;
+    switchView("tabs");
+    try {
+        await refreshTree({ sortNow: true });
+        // Reveal the created row without taking keyboard focus from Chrome.
+        selectRow(`tab-${response.tabId}`, true);
+        setStatus(response.warning || "");
+    }
+    catch {
+        setStatus([response.warning, "New tab created, but the list could not be refreshed. Use Refresh to update it."].filter(Boolean).join(" "));
+    }
 }
 
 async function closeTab(tabId) {
@@ -870,8 +911,11 @@ async function init() {
         onDrop: dropTab, onEnd: scheduleRefresh, onError: showActionError
     });
     document.getElementById("search-icon").append(icon("search"));
-    for (const [id, name] of [["refresh", "refresh"], ["keyboard-help", "keyboard"], ["new-collection", "plus"], ["sort-tabs", "sort"]])
+    for (const [id, name] of [["refresh", "refresh"], ["keyboard-help", "keyboard"], ["new-collection", "plus"], ["sort-tabs", "sort"], ["new-tab", "plus"]])
         elements[id].append(icon(name));
+    elements["new-tab"].addEventListener("click", (event) => {
+        if (event.detail < 2) createNewTab().catch(showActionError);
+    });
     elements["sort-tabs"].dataset.focusKey = "sort-tabs";
     elements["sort-tabs"].addEventListener("click", sortMenu);
     elements["save-current"].prepend(icon("saved"));
