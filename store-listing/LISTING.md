@@ -1,6 +1,6 @@
 # Ztab store listing
 
-Prepared English copy for the **2.1.1** update to the existing Chrome Web Store item, following the published 2.0.0 release. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. This document does not indicate that the 2.1.1 listing has been submitted or published; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
+Prepared English copy for the **2.2.0** update to the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. Upload and submission will be completed manually; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
 
 ## Product name
 
@@ -32,6 +32,7 @@ MANAGE TABS ACROSS WINDOWS
 
 • See pinned tabs, inline groups, and window sections in one side panel
 • Jump directly to a tab in any normal window
+• Create a new tab with + beside Tabs and Saved, or use + on another window's heading to open one there
 • Move or close regular tabs without bringing each window forward
 • Keep related tabs in Ztab groups across windows without moving their browser tabs
 • Find recently used tabs first, or arrange them in Manual order
@@ -57,6 +58,7 @@ SHORTCUTS AND THOUGHTFUL INTERACTIONS
 • See the currently assigned shortcut in keyboard help
 • Select a tab with the Up and Down Arrow keys, then press Enter to open it
 • Move between controls with Tab and Shift+Tab
+• Open New Tab with Enter or Space, including while viewing Saved or searching
 • Click a tab title to jump to that tab
 • Close regular tabs with ×, use ··· for page actions, and find Merge here beside other windows
 • Cmd-click or Ctrl-click to select tabs, and Shift-click to select a range
@@ -79,7 +81,19 @@ JOIN THE COMMUNITY
 
 Have a question, found a bug, or have an idea for Ztab? Join our Telegram community: https://t.me/z08_studio
 
-## Release notes — 2.1.1
+## Release notes — 2.2.0
+
+Ztab 2.2 makes it easier to open your next tab without leaving the side panel.
+
+• Adds + beside Tabs and Saved to create a tab in the current window
+• Adds + beside other windows to create and focus a tab there
+• Keeps New Tab available from Saved and search results, with keyboard access
+• Reveals the new tab and clears the Tabs search while preserving your Saved search
+• Updates the optional USDC on Base support address and its matching QR code
+
+No new permissions are required. Your Saved library, collections, group definitions, shared pinned sites, and preferences remain in your local profile. As before, live group membership, manual tab order, and recent-use records reset when the extension updates. Chrome 123 or later is required.
+
+## Previous release notes — 2.1.1
 
 Ztab 2.1 refreshes the app's identity and makes it easier to keep Ztab within reach.
 
@@ -109,7 +123,7 @@ Group definitions and Saved pages remain across browser restarts. Live group mem
 
 ### tabs
 
-Reads open tabs and pinned state, displays the live tab list, focuses tabs, moves or closes tabs on request, creates missing pinned tabs, and removes duplicate pinned copies. No tab data is sent to an external server.
+Reads open tabs and pinned state, displays the live tab list, creates and focuses new tabs on request, moves or closes tabs on request, creates missing pinned tabs, and removes duplicate pinned copies. No tab data is sent to an external server.
 
 ### windows
 

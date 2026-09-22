@@ -12,7 +12,7 @@ Ztab brings your Chrome windows together with three everyday capabilities:
 
 Ztab was previously named TabSpan. The capital Z follows the Z-series naming convention used by Zdraft.
 
-**Version 2.1.0 is released on GitHub; 2.1.1 prepares the Chrome Web Store name “Ztab: The last tab manager you’ll need.”** The Store was last verified at 2.0.0 on 2026-09-18. Version 2.1 refreshes the Ztab identity and toolbar icons, adds an optional support dialog, and helps users pin Ztab for quick access. Inline groups, batch actions, Saved, and recent sorting were introduced in 2.0. See the [release guide](CHROME_WEB_STORE.md) for the verified baseline, changes, and rollout status.
+**Version 2.2.0 is prepared for release and manual Chrome Web Store upload.** It adds New Tab actions for the current or another window and updates the optional support address and QR code. Version 2.1.1 is the previous GitHub release. See the [release guide](CHROME_WEB_STORE.md) for package verification, release notes, and rollout status.
 
 Ztab requires **Chrome 123 or later**. Older Chrome installations remain on their previous compatible extension version until Chrome is upgraded.
 
@@ -26,12 +26,15 @@ From the side panel, you can:
 
 - See which tabs belong to each window.
 - Jump directly to a tab in any window.
+- Create a tab with **+** beside Tabs and Saved, or use **+** on another window's heading to create one there.
 - Move regular tabs between windows.
 - Merge another window into your current window with one click.
 - Close regular tabs without switching windows first.
 - Hide the pinned-tabs section when you want a more compact view.
 - See updates automatically as tabs and windows change.
 - Search open tabs, arrange related tabs into inline groups across windows, and keep an independent library of saved pages.
+
+The top **+** always uses the panel's current window, including from Saved or search results. Creating a tab opens Chrome's configured New Tab page, activates it, and focuses its window. Ztab returns to Tabs and clears its tab search so the new row is visible. Saved searches stay intact. New tabs are unpinned and do not join an inline group automatically.
 
 With multiple displays connected, each window heading shows its window and display names on one line. Long display names truncate to leave room for window actions. The name updates when you move the window to another screen; windows spanning screens use the display containing the largest part of the window. Window numbers remain so you can distinguish multiple windows on the same display. Matching display names receive a number, and missing names fall back to **Display 1**, **Display 2**, and so on.
 

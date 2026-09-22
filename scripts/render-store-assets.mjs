@@ -109,7 +109,7 @@ const screenshots = [
       ${storeHeader("01", "ACROSS WINDOWS")}
       ${slogan.heroLines.map((line, i) => headline(52, 211 + i * 89, line, { size: 96, fill: i === 2 ? colors.primary : colors.ink })).join("")}
       ${text(56, 469, "Every window, in view.", { size: 25, weight: 700 })}
-      ${text(56, 508, "Find, move and close your open tabs", { size: 18, fill: colors.muted })}
+      ${text(56, 508, "Create, find, move and close tabs", { size: 18, fill: colors.muted })}
       ${text(56, 536, "from one live side panel.", { size: 18, fill: colors.muted })}
       ${rule(56, 586, 558, 586)}
       ${["Windows", "Pinned tabs", "Keyboard"].map((value, i) => `${label(56 + i * 176, 624, `0${i + 1}`)}${text(56 + i * 176, 655, value, { size: 17, weight: 700, fill: colors.primary })}`).join("")}
