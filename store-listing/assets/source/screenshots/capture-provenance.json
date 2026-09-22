@@ -1,6 +1,6 @@
 {
-  "captureDate": "2026-09-17",
-  "source": "User Chrome with installed Ztab 2.0; Shottr capture; privacy-cropped product screenshots unless an individual source states otherwise",
+  "captureDate": "2026-09-22",
+  "source": "Isolated Chrome for Testing 153 on macOS with the Ztab 2.2.0 side-panel document and real public tabs, unless an individual source states otherwise",
   "websites": [
     "Wikipedia",
     "NASA",
@@ -8,74 +8,83 @@
     "Rust",
     "MDN"
   ],
-  "processing": "Crop Chrome native header when present; preserve product pixels; scale proportionally only",
+  "processing": "Capture only product regions at device scale factor 2; preserve product pixels; scale proportionally only",
   "captures": [
     {
       "file": "side-panel-raw.png",
       "width": 1090,
       "height": 944,
-      "source": "Capture 01: side panel",
+      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Tabs with New Tab actions and real public pages in two Chrome windows; internal tooling group collapsed",
       "crop": {
         "x": 0,
-        "y": 76,
+        "y": 0,
         "width": 1090,
         "height": 944
-      }
+      },
+      "captureDate": "2026-09-22",
+      "deviceScaleFactor": 2
     },
     {
       "file": "pinned-tabs-raw.png",
       "width": 1090,
       "height": 544,
-      "source": "Capture 02: pinned tabs",
+      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Wikipedia search showing the synchronized pinned copy in each of two Chrome windows",
       "crop": {
         "x": 0,
-        "y": 76,
+        "y": 0,
         "width": 1090,
         "height": 544
-      }
+      },
+      "captureDate": "2026-09-22",
+      "deviceScaleFactor": 2
     },
     {
       "file": "keyboard-raw.png",
       "width": 1020,
       "height": 1030,
-      "source": "Capture 03: keyboard help",
+      "source": "User Chrome with installed Ztab 2.0; Shottr capture of the unchanged keyboard-help dialog",
       "crop": {
         "x": 0,
         "y": 0,
         "width": 1020,
         "height": 1030
-      }
+      },
+      "captureDate": "2026-09-17"
     },
     {
       "file": "groups-bulk-raw.png",
       "width": 1090,
       "height": 760,
-      "source": "Capture 05: bulk selection",
+      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Four real public pages selected across two windows with an HTTPS search; pinned tabs hidden",
       "crop": {
         "x": 0,
         "y": 0,
         "width": 1090,
         "height": 760
-      }
+      },
+      "captureDate": "2026-09-22",
+      "deviceScaleFactor": 2
     },
     {
       "file": "bulk-toolbar-raw.png",
       "width": 1090,
       "height": 170,
-      "source": "Capture 05: bulk action bar",
+      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Action bar captured immediately after the matching four-tab selection",
       "crop": {
         "x": 0,
-        "y": 0,
+        "y": 1350,
         "width": 1090,
         "height": 170
-      }
+      },
+      "captureDate": "2026-09-22",
+      "deviceScaleFactor": 2
     },
     {
       "file": "saved-raw.png",
       "width": 1090,
       "height": 704,
       "captureDate": "2026-09-22",
-      "source": "Isolated Chrome for Testing with Ztab 2.1.1; Public resources collection populated from real Wikipedia, NASA and Python tabs through extension workspace operations; Playwright screenshot",
+      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Public resources collection with real Wikipedia, NASA and Python pages preserved during the 2.1.1 upgrade",
       "deviceScaleFactor": 2,
       "crop": {
         "x": 0,

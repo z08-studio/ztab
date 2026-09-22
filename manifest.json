@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ztab: The last tab manager you’ll need.",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "minimum_chrome_version": "123",
   "description": "Manage tabs across Chrome windows, keep pinned tabs in sync, and move faster with keyboard shortcuts.",
   "permissions": ["tabs", "windows", "storage", "sidePanel", "tabGroups", "system.display", "favicon"],
