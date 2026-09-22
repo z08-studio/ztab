@@ -15,10 +15,7 @@ const fontFiles = [
   "Manrope-Medium.otf",
   "Manrope-Bold.otf",
   "InstrumentSerif-Regular.ttf",
-  "ZtabEditorialSC-Semibold.ttf",
 ].map((file) => join(sourceDirectory, "fonts", file));
-const cjkCoverage = JSON.parse(await readFile(join(sourceDirectory, "fonts", "cjk-coverage.json"), "utf8"));
-const cjkCharacters = new Set(cjkCoverage.characters);
 const colors = {
   paper: "#F5F2ED",
   ink: "#292535",
@@ -44,13 +41,6 @@ function text(x, y, value, { size = 22, fill = colors.ink, weight = 500, family 
 }
 const label = (x, y, value, options = {}) => text(x, y, value, { size: 11, weight: 700, tracking: 1.6, fill: colors.muted, ...options });
 const headline = (x, y, value, options = {}) => text(x, y, value, { size: 88, weight: 400, family: "Instrument Serif", tracking: -0.8, ...options });
-function chinese(x, y, value, options = {}) {
-  const missing = [...value].filter((character) => !cjkCharacters.has(character));
-  if (missing.length) {
-    throw new Error(`Chinese artwork font is missing ${[...new Set(missing)].join("")}. Rebuild its subset as described in source/fonts/README.md.`);
-  }
-  return text(x, y, value, { size: 30, weight: 600, family: "Ztab Editorial SC", ...options });
-}
 const rule = (x1, y1, x2, y2, color = colors.line) => `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${color}"/>`;
 
 function page(width, height, content, background = colors.paper) {
@@ -226,90 +216,6 @@ function marqueePromo() {
   `, colors.night);
 }
 
-function socialHeader(number, title, dark = false) {
-  return `${brand(64, 43, 174, dark)}
-    ${label(1016, 84, `${number} / 05`, { size: 16, anchor: "end", fill: dark ? colors.lightMuted : colors.muted })}
-    ${label(64, 157, title, { size: 14, fill: dark ? colors.lightMuted : colors.primary })}`;
-}
-
-function socialFooter(dark = false) {
-  const fill = dark ? colors.lightMuted : colors.muted;
-  return `${rule(64, 1367, 1016, 1367, dark ? colors.darkLine : colors.line)}
-    ${text(64, 1409, slogan.text, { size: 21, fill })}
-    ${label(1016, 1409, `ZTAB ${releaseSeries}`, { size: 12, fill, anchor: "end" })}`;
-}
-
-const socialCards = [
-  {
-    file: "01-跨窗口管理.png",
-    title: "跨窗口管理",
-    svg: () => page(1080, 1440, `
-      ${socialHeader("01", "CHROME / TABS IN ORDER")}
-      ${chinese(60, 267, "标签页，", { size: 75 })}
-      ${chinese(60, 365, "终于理顺了。", { size: 75, fill: colors.primary })}
-      ${slogan.lines.map((line, i) => headline(62, 438 + i * 50, line, { size: 54 })).join("")}
-      ${captureImage("side-panel-raw.png", 100, 548, 880)}
-      ${socialFooter()}
-    `),
-  },
-  {
-    file: "02-固定标签同步.png",
-    title: "固定标签同步",
-    svg: () => page(1080, 1440, `
-      ${socialHeader("02", "PIN ONCE. READY IN EVERY WINDOW.", true)}
-      ${chinese(60, 278, "常用网站，", { size: 77, fill: colors.light })}
-      ${chinese(60, 381, "固定一次就好。", { size: 77, fill: colors.light })}
-      ${chinese(64, 473, "换个窗口，常用网站还在。", { size: 31, fill: colors.lightMuted })}
-      ${captureImage("pinned-tabs-raw.png", 64, 572, 952)}
-      ${rule(64, 1141, 1016, 1141, colors.darkLine)}
-      ${chinese(64, 1200, "截图里，Wikipedia 已固定在两个窗口。", { size: 28, fill: colors.light })}
-      ${chinese(64, 1257, "同一 Chrome 配置下的窗口，共享固定标签。", { size: 25, fill: colors.lightMuted })}
-      ${socialFooter(true)}
-    `, colors.night),
-  },
-  {
-    file: "03-键盘快捷操作.png",
-    title: "键盘快捷操作",
-    svg: () => page(1080, 1440, `
-      ${socialHeader("03", "STAY IN FLOW")}
-      ${chinese(60, 267, "找页面，", { size: 72 })}
-      ${chinese(60, 359, "也能不离开键盘。", { size: 72 })}
-      ${chinese(64, 431, "打开侧栏 → 搜索 → 回车切换", { size: 29, fill: colors.muted })}
-      ${captureImage("keyboard-raw.png", 154, 488, 772, { border: false })}
-      ${chinese(64, 1320, "Mac 快捷键示例，打开侧栏的快捷键可自定义。", { size: 24, fill: colors.muted })}
-      ${socialFooter()}
-    `),
-  },
-  {
-    file: "04-稍后再看.png",
-    title: "稍后再看",
-    svg: () => page(1080, 1440, `
-      ${socialHeader("04", "WORTH KEEPING")}
-      ${chinese(60, 267, "现在先存下，", { size: 75 })}
-      ${chinese(60, 365, "以后慢慢看。", { size: 75, fill: colors.primary })}
-      ${chinese(64, 443, "把值得留的页面，收进 Saved。", { size: 31, fill: colors.muted })}
-      ${captureImage("saved-raw.png", 64, 523, 952)}
-      ${chinese(64, 1225, "按主题收进集合，关掉标签也找得到。", { size: 31 })}
-      ${chinese(64, 1284, "Saved 是独立的本地收藏库。", { size: 25, fill: colors.muted })}
-      ${socialFooter()}
-    `),
-  },
-  {
-    file: "05-批量整理.png",
-    title: "批量整理",
-    svg: () => page(1080, 1440, `
-      ${socialHeader("05", "LESS TAB JUGGLING")}
-      ${chinese(60, 267, "一次选中，", { size: 75 })}
-      ${chinese(60, 365, "一起整理。", { size: 75, fill: colors.primary })}
-      ${chinese(64, 443, "跨窗口多选，分组、移动、关闭或保存。", { size: 29, fill: colors.muted })}
-      ${captureImage("groups-bulk-raw.png", 103, 492, 874)}
-      ${chinese(103, 1144, "同一次选择的底部操作栏 · 单独截取", { size: 21, fill: colors.muted })}
-      ${captureImage("bulk-toolbar-raw.png", 103, 1167, 874)}
-      ${socialFooter()}
-    `, colors.lilac),
-  },
-];
-
 const iconSvg = await readFile(join(sourceDirectory, "icon.svg"), "utf8");
 const smallIconSvg = await readFile(join(sourceDirectory, "icon-small.svg"), "utf8");
 for (const size of [16, 32, 48, 128]) {
@@ -320,10 +226,6 @@ for (const spec of screenshots) {
 }
 await render(smallPromo(), join(finalDirectory, "promo-small-440x280.png"), 440);
 await render(marqueePromo(), join(finalDirectory, "promo-marquee-1400x560.png"), 1400);
-for (const spec of socialCards) {
-  await render(spec.svg(), join(finalDirectory, "xiaohongshu", spec.file), 1080);
-}
-
 const screenshotThumbnails = await Promise.all(screenshots.map(async (spec) => dataUri(await readFile(join(finalDirectory, "screenshots", spec.file)))));
 const promoSvg = smallPromo();
 await render(page(1368, 1530, `
@@ -338,14 +240,8 @@ await render(page(1368, 1530, `
   ${label(704, 1483, "06 / SMALL PROMOTIONAL TILE", { size: 12 })}
 `, "#E3DDD6"), join(reviewDirectory, "screenshots-overview.png"), 1368);
 
-const socialThumbnails = await Promise.all(socialCards.map(async (spec) => dataUri(await readFile(join(finalDirectory, "xiaohongshu", spec.file)))));
-await render(page(1780, 606, `
-  ${brand(28, 24, 128)}${label(1752, 58, "XIAOHONGSHU / FINAL ARTWORK", { anchor: "end", size: 13 })}
-  ${socialThumbnails.map((uri, i) => `<image href="${uri}" x="${28 + i * 348}" y="105" width="332" height="443"/>${chinese(28 + i * 348, 584, socialCards[i].title, { size: 19 })}`).join("")}
-`, "#E3DDD6"), join(reviewDirectory, "xiaohongshu-overview.png"), 1780);
-
 const marqueeThumbnail = dataUri(await readFile(join(finalDirectory, "promo-marquee-1400x560.png")));
-await render(page(1400, 1230, `
+await render(page(1400, 1040, `
   <image href="${marqueeThumbnail}" x="0" y="0" width="1400" height="560"/>
   ${label(56, 628, "COLOR / P2 WITH PAPER & INK")}
   ${[colors.primary, colors.secondary, colors.paper, colors.ink].map((fill, i) => `<rect x="${56 + i * 326}" y="659" width="302" height="82" fill="${fill}" stroke="#D4CDC7"/>${label(56 + i * 326, 773, fill)}`).join("")}
@@ -355,9 +251,6 @@ await render(page(1400, 1230, `
   ${label(827, 872, "DETAIL / MANROPE")}
   ${text(827, 933, "Clear windows. Familiar keys.", { size: 25 })}
   ${text(827, 976, "Ztab — the everyday essentials.", { size: 20, fill: colors.muted })}
-  ${rule(56, 1041, 1344, 1041)}
-  ${label(56, 1096, "CHINESE / NOTO SERIF SC")}
-  ${chinese(56, 1171, "让标签页，回到井井有条。", { size: 44 })}
 `, colors.paper), join(reviewDirectory, "brand-overview.png"), 1400);
 
-console.log("Rendered approved P2 icons, five Store screenshots, two promo tiles, five Xiaohongshu cards, and three overview sheets using the final A slogan.");
+console.log("Rendered approved P2 icons, five Store screenshots, two promo tiles, and two overview sheets using the final A slogan.");

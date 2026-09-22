@@ -7,6 +7,7 @@
 - Positioning: **The last tab manager you’ll need.**
 - The approved logo is **B1, Tab Hub, in P2 indigo** (`#493567` and `#A996CC`), with vector sources in `store-listing/source/`. The approved slogan is documented in `store-listing/SLOGANS.md` and sourced from `store-listing/source/slogan.json`.
 - Give equal weight to three capabilities: managing tabs across windows, keeping pinned tabs across windows, and keyboard shortcuts with thoughtful interactions.
+- Keep repository documentation, marketing copy, and screenshot examples in English. Store local drafts, browser profiles, and review packages in ignored `output/` or outside the repository.
 - Describe implemented behavior. Do not imply cross-device sync, saved sessions, or shortcuts that the product does not provide.
 - The former names TabSpan and PinAllWindows may remain in migration history and compatibility identifiers. Keep existing storage keys and runtime message values unless a separate migration is explicitly planned.
 - Use `https://github.com/boundless-forest/ztab` for repository and support links. See `CHROME_WEB_STORE.md` for the remaining store rollout.

@@ -14,12 +14,8 @@ Identity: **B1 Tab Hub + P2 indigo**. Slogan: **The last tab manager you’ll ne
 
 Upload the five screenshots in numeric order. Use the repository's `icons/icon128.png` for the Store icon. The overview sheets in `../review/` are for reviewing the set, not Store upload.
 
-## Xiaohongshu
+All seven marketing images are opaque RGB PNGs. Instrument Serif headlines and Manrope details provide consistent typography without relying on system fonts. The layout uses warm paper, ink, and the approved indigo palette.
 
-`xiaohongshu/` contains five 1080×1440 Chinese portrait images, ordered as windows, pins, keyboard, Saved, and bulk actions. The cover and footer use the final slogan; all images use the approved identity. `../../XIAOHONGSHU.md` contains matching post copy without outbound links.
-
-All twelve marketing images are opaque RGB PNGs. Instrument Serif headlines, Manrope details, and a licensed Noto Serif SC subset provide consistent typography without relying on system fonts. The layout uses warm paper, ink, and the approved indigo palette.
-
-Product images are privacy-cropped captures from the user's Chrome and installed Ztab 2.0. They show public Wikipedia, NASA, Python, Rust and MDN pages. Browser account controls and private pages are excluded. The real UI pixels are scaled proportionally, never reconstructed.
+Product images are privacy-cropped captures from the user's Chrome and installed Ztab 2.0, plus a Saved capture from an isolated Chrome for Testing profile running Ztab 2.1.1. They show public Wikipedia, NASA, Python, Rust and MDN pages. Browser account controls and private pages are excluded. The real UI pixels are scaled proportionally, never reconstructed.
 
 Rebuild with `pnpm assets:store`. See `../../ARTWORK.md` for provenance, exact design rules and verification. The files are prepared locally; rendering does not upload or publish them.
