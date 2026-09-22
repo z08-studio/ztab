@@ -4,5 +4,6 @@ node_modules/
 dist-store/
 TabSpan-*.zip
 ztab-*.zip
-output/playwright/
+/output/
 .playwright-cli/
+.DS_Store
