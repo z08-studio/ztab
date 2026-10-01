@@ -1,6 +1,6 @@
 # Ztab store listing
 
-Prepared English copy for the **2.2.0** update to the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. Upload and submission will be completed manually; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
+Prepared English copy for the **2.3.0** update to the existing Chrome Web Store item. The three product pillars are cross-window tab management, shared pinned tabs, and keyboard shortcuts with thoughtful interactions. Upload and submission will be completed manually; see [the release guide](../CHROME_WEB_STORE.md) for rollout status.
 
 ## Product name
 
@@ -34,6 +34,7 @@ MANAGE TABS ACROSS WINDOWS
 • Jump directly to a tab in any normal window
 • Create a new tab with + beside Tabs and Saved, or use + on another window's heading to open one there
 • Move or close regular tabs without bringing each window forward
+• Drag a tab onto another window's heading or one of its tabs to move it there immediately
 • Keep related tabs in Ztab groups across windows without moving their browser tabs
 • Find recently used tabs first, or arrange them in Manual order
 • Select several tabs to group, move, close, or save together
@@ -75,13 +76,28 @@ Ztab works between windows on the same computer and in the same Chrome profile. 
 
 Merge here works between eligible normal windows in the same browsing mode. Chrome closes a source window when its last tab moves. Shared pinned copies are deduplicated; identical regular tabs stay open. There is no merge undo action.
 
-Ztab groups are independent of Chrome's native tab groups. Grouping and sorting change only Ztab's list. Saved is independent of Chrome bookmarks; it contains only pages you explicitly save. Incognito groups and Saved use a separate temporary library, cleared when the last incognito window closes.
+Cross-window dragging moves the real tab to the end of the destination window and removes its Ztab group membership after the move succeeds. The destination keeps its current page selected. It works in both Recently used and Manual order; clear search before dragging. Pinned tabs cannot be dragged, and both windows must be eligible regular windows in the same browsing mode.
+
+Ztab groups are independent of Chrome's native tab groups. Grouping and sorting change only Ztab's list. To create a group by dragging, hold over the center of another tab in the same Chrome window; explicit group-header drops and menu actions can group tabs across windows. Saved is independent of Chrome bookmarks; it contains only pages you explicitly save. Incognito groups and Saved use a separate temporary library, cleared when the last incognito window closes.
 
 JOIN THE COMMUNITY
 
 Have a question, found a bug, or have an idea for Ztab? Join our Telegram community: https://t.me/z08_studio
 
-## Release notes — 2.2.0
+## Release notes — 2.3.0
+
+Ztab 2.3 makes moving tabs between windows a direct drag-and-drop action.
+
+• Drag a tab onto another window's heading or one of its tabs to move it there immediately
+• See the destination in a Move to … hint, with no hold delay in either sort mode
+• Move the actual browser tab instead of creating or joining a group on a cross-window row drop
+• Keep the destination's current page selected and show the moved tab in its window section
+• Move grouped tabs out of their Ztab group only after the browser move succeeds
+• Keep window headings available as drop targets even when all their tabs are grouped
+
+Same-window grouping, explicit group-header drops, and menu actions remain available. No new permissions are required. Your Saved library, collections, group definitions, shared pinned sites, and preferences remain in your local profile. As before, live group membership, manual tab order, and recent-use records reset when the extension updates. Chrome 123 or later is required.
+
+## Previous release notes — 2.2.0
 
 Ztab 2.2 makes it easier to open your next tab without leaving the side panel.
 

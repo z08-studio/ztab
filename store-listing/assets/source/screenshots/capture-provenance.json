@@ -1,6 +1,6 @@
 {
-  "captureDate": "2026-09-22",
-  "source": "Isolated Chrome for Testing 153 on macOS with the Ztab 2.2.0 side-panel document and real public tabs, unless an individual source states otherwise",
+  "captureDate": "2026-10-01",
+  "source": "Actual Ztab side-panel documents with real public tabs; each capture records its extension version and date",
   "websites": [
     "Wikipedia",
     "NASA",
@@ -14,14 +14,14 @@
       "file": "side-panel-raw.png",
       "width": 1090,
       "height": 944,
-      "source": "Ztab 2.2.0 in isolated Chrome for Testing; Playwright screenshot. Tabs with New Tab actions and real public pages in two Chrome windows; internal tooling group collapsed",
+      "source": "Ztab 2.3.0 in isolated Chrome for Testing 153 after upgrading from 2.2.0; Playwright screenshot during a real Python tab drag to Window 2. The live destination hint is captured without editing product pixels; internal tooling group collapsed",
       "crop": {
         "x": 0,
         "y": 0,
         "width": 1090,
         "height": 944
       },
-      "captureDate": "2026-09-22",
+      "captureDate": "2026-10-01",
       "deviceScaleFactor": 2
     },
     {

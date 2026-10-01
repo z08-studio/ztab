@@ -34,7 +34,7 @@ The Store image sizes follow the [Chrome Web Store image guidance](https://devel
 
 Use the Store screenshots in this order:
 
-1. **Across windows** — approved slogan and public pages from two Chrome windows; New Tab actions, switching and Merge here are visible.
+1. **Across windows** — approved slogan and a direct window move in Ztab 2.3; the genuine **Move to Window 2** hint appears above the destination heading.
 2. **Pinned tabs** — “Pin once.” The real Wikipedia search shows pinned copies in two windows.
 3. **Keyboard shortcuts** — “Stay in flow.” The actual help dialog accompanies a three-step keyboard sequence.
 4. **Bulk actions** — “A little less tab juggling.” Four public pages selected across windows, with their action bar separately displayed and labeled.
@@ -44,13 +44,15 @@ Use the Store screenshots in this order:
 
 ## Authentic screenshot sources
 
-The windows, pins, bulk selection/action bar, and Saved sources were captured on **2026-09-22** from the actual **Ztab 2.2.0 side-panel document** in an isolated **Chrome for Testing 153** profile using Playwright at device scale factor 2. Real public pages are open in two Chrome windows. The **Public resources** collection contains Wikipedia, NASA and Python pages and was preserved during the verified upgrade from 2.1.1. Public websites also include Rust and MDN; page titles and favicons come from those sites. The unchanged keyboard-help dialog retains its **2026-09-17** capture from installed **Ztab 2.0** in the user's Chrome with Shottr.
+The windows source was refreshed on **2026-10-01** from the actual **Ztab 2.3.0 side-panel document** after a fixed-path upgrade from the published 2.2.0 package in an isolated **Chrome for Testing 153** profile. It shows a real drag from Python to another window's heading. The pointer is held while Chrome captures the **Move to Window 2** hint; no hint or product pixels are added afterward.
+
+The unchanged pins, bulk selection/action bar, and Saved sources retain their **2026-09-22** captures from **Ztab 2.2.0** in an isolated profile. The **Public resources** collection contains Wikipedia, NASA and Python pages and was preserved during the earlier upgrade from 2.1.1. Public websites also include Rust and MDN; page titles and favicons come from those sites. These Playwright captures use device scale factor 2. The unchanged keyboard-help dialog retains its **2026-09-17** capture from installed **Ztab 2.0** in the user's Chrome with Shottr.
 
 Review artifacts stay in ignored `output/` or outside the repository and deliverable ZIP. Only product regions are checked in; no browser account controls or private pages appear. The internal tooling group is collapsed in the window capture, and the bulk capture uses an HTTPS search with pinned tabs hidden. Navigation, fields, rows, counts, dialog and action controls stay exactly as captured.
 
 | Safe source | Size | Visible content |
 | --- | ---: | --- |
-| `side-panel-raw.png` | 1090×944 | Navigation and public pages from two windows |
+| `side-panel-raw.png` | 1090×944 | Navigation, public pages from two windows, and the live cross-window move hint |
 | `pinned-tabs-raw.png` | 1090×544 | Wikipedia search and two pinned copies |
 | `keyboard-raw.png` | 1020×1030 | Complete keyboard-help dialog |
 | `groups-bulk-raw.png` | 1090×760 | Four public pages selected across windows |
