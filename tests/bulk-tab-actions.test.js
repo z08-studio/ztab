@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { runBulkTabAction } from "../src/background/bulk-tab-actions.js";
 import { createWorkspaceController } from "../src/background/workspace-controller.js";
 import { STORAGE_PRIVATE_WORKSPACE_KEY, STORAGE_WORKSPACE_KEY } from "../src/background/constants.js";
+import { orderedWorkspaceTabs } from "../src/shared/workspace.js";
 
 function win(windowId, ids, overrides = {}) {
     return {
@@ -70,6 +71,102 @@ function harness(initial = [win(1, [11, 12]), win(2, [21, 22])]) {
     const run = async (operation, incognito = false) => runBulkTabAction(operation, { windows: await api.getAllNormalWindowsWithTabs(), incognito }, api);
     return { windows, calls, hooks, api, find, storage, controller, run };
 }
+
+const dragMove = (overrides = {}) => ({
+    action: "move-tab", tabId: 11, expectedWindowId: 1, expectedGroupId: null, targetWindowId: 2, ...overrides
+});
+
+test("cross-window drops move the real tab to the destination without creating a group", async () => {
+    const h = harness();
+    const result = await h.controller.request(1, dragMove());
+    assert.deepEqual(result.completedIds, [11]);
+    assert.deepEqual(h.calls, [["move", [11], { windowId: 2, index: -1 }]]);
+    assert.deepEqual(h.windows.get(1).tabs.map((tab) => tab.id), [12]);
+    assert.deepEqual(h.windows.get(2).tabs.map((tab) => tab.id), [21, 22, 11]);
+    assert.deepEqual(result.workspace.groups, []);
+    assert.deepEqual(result.workspace.memberships, {});
+    assert.equal(h.find(21).active, true);
+    assert.deepEqual(orderedWorkspaceTabs(result.workspace, h.windows.get(2).tabs).map((tab) => tab.id), [21, 22, 11]);
+});
+
+test("moving a grouped tab removes only its membership and survives its source window closing", async () => {
+    const h = harness([win(1, [11]), win(2, [21, 22])]);
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "Research", color: "purple", tabIds: [11, 21], expectedMemberships: { 11: null, 21: null }
+    });
+    const result = await h.controller.request(1, dragMove({ expectedGroupId: group.id }));
+    assert.deepEqual(result.completedIds, [11]);
+    assert.equal(h.windows.has(1), false);
+    assert.deepEqual(result.workspace.memberships, { 21: group.id });
+    assert.equal(result.workspace.groups.length, 1);
+    assert.equal(result.workspace.lastActive[group.id], undefined);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY].memberships, { 21: group.id });
+});
+
+test("failed cross-window drops preserve group membership and manual order", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "Research", color: "purple", tabIds: [11, 12], expectedMemberships: { 11: null, 12: null }
+    });
+    const before = structuredClone(h.storage.local[STORAGE_WORKSPACE_KEY]);
+    h.hooks.beforeMove = () => { throw new Error("Tabs cannot be edited right now."); };
+    const result = await h.controller.request(1, dragMove({ expectedGroupId: group.id }));
+    assert.deepEqual(result.completedIds, []);
+    assert.deepEqual(result.failedIds, [11]);
+    assert.match(result.failures[0].error, /cannot be edited/);
+    assert.equal(h.find(11).windowId, 1);
+    assert.deepEqual(h.storage.local[STORAGE_WORKSPACE_KEY], before);
+});
+
+test("stale source windows and group memberships reject a drag before moving a tab", async () => {
+    const h = harness();
+    await assert.rejects(h.controller.request(1, dragMove({ expectedWindowId: 3 })), /closed or moved/);
+    await h.controller.request(1, {
+        action: "create-group", name: "Research", color: "purple", tabIds: [11], expectedMemberships: { 11: null }
+    });
+    await assert.rejects(h.controller.request(1, dragMove()), /group changed/);
+    assert.deepEqual(h.calls, []);
+});
+
+test("cross-window drops reject invalid, missing, compact and private destinations", async () => {
+    const h = harness([win(1, [11, 12]), win(2, [21], { width: 400, height: 300 }), win(3, [31], { incognito: true })]);
+    for (const targetWindowId of [null, undefined, "2", -1, 1, 2, 3, 4])
+        await assert.rejects(h.controller.request(1, dragMove({ targetWindowId })));
+    h.find(11).pinned = true;
+    await assert.rejects(h.controller.request(1, dragMove()), /Unpin/);
+    assert.deepEqual(h.calls, []);
+});
+
+test("cross-window drops refuse compact sources and tabs pinned during revalidation", async () => {
+    const compact = harness([win(1, [11, 12], { width: 400, height: 300 }), win(2, [21])]);
+    assert.deepEqual((await compact.controller.request(1, dragMove())).failedIds, [11]);
+    assert.deepEqual(compact.calls, []);
+    const h = harness();
+    const getWindow = h.api.getWindowWithTabs;
+    h.api.getWindowWithTabs = async (id) => {
+        if (id === 2) h.find(11).pinned = true;
+        return getWindow(id);
+    };
+    const controller = createWorkspaceController({ api: h.api, chrome: {} });
+    assert.deepEqual((await controller.request(1, dragMove())).failedIds, [11]);
+    assert.deepEqual(h.calls, []);
+});
+
+test("a completed drag stays successful when its callback or library refresh fails", async () => {
+    const h = harness();
+    const { group } = await h.controller.request(1, {
+        action: "create-group", name: "Research", color: "purple", tabIds: [11], expectedMemberships: { 11: null }
+    });
+    h.hooks.afterMove = () => { throw new Error("Callback failed after moving."); };
+    h.api.storageSet = async () => { throw new Error("Storage quota exceeded"); };
+    const controller = createWorkspaceController({ api: h.api, chrome: {} });
+    const result = await controller.request(1, dragMove({ expectedGroupId: group.id }));
+    assert.deepEqual(result.completedIds, [11]);
+    assert.deepEqual(result.failedIds, []);
+    assert.equal(h.find(11).windowId, 2);
+    assert.deepEqual(result.workspace.memberships, {});
+    assert.match(result.warning, /local library could not be refreshed/);
+});
 
 test("bulk close survives the panel window closing, and prunes memberships and tab order", async () => {
     const h = harness();

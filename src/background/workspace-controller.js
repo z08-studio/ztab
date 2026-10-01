@@ -104,8 +104,26 @@ export function createWorkspaceController(dependencies = {}) {
         const replacements = reconcileTabs(workspace, tabs);
         let result = {};
 
-        if (["bulk-close-tabs", "bulk-move-tabs"].includes(operation.action)) {
-            result = await runBulkTabAction(operation, { windows, incognito }, api);
+        if (["bulk-close-tabs", "bulk-move-tabs", "move-tab"].includes(operation.action)) {
+            const movingTab = operation.action === "move-tab";
+            let movedWorkspace;
+            if (movingTab) {
+                const tab = tabs.find((item) => item.id === operation.tabId);
+                if (!tab || tab.windowId !== operation.expectedWindowId)
+                    throw new Error("This tab closed or moved to another window. Refresh and drag it again.");
+                if (!Number.isInteger(operation.targetWindowId) || operation.targetWindowId < 0 || tab.windowId === operation.targetWindowId)
+                    throw new Error("Choose another destination window and try again.");
+                // Validate membership before touching Chrome. Apply this copy
+                // only after the move succeeds so failures keep the group intact.
+                ({ workspace: movedWorkspace } = applyWorkspaceOperation(workspace, {
+                    action: "assign-tab", tabId: tab.id, groupId: null, expectedGroupId: operation.expectedGroupId
+                }, { tabs: tabs.map((item) => item.id === tab.id ? { ...item, windowId: operation.targetWindowId } : item) }));
+            }
+            result = await runBulkTabAction(movingTab
+                ? { action: "bulk-move-tabs", tabIds: [operation.tabId], targetWindowId: operation.targetWindowId }
+                : operation, { windows, incognito }, api);
+            if (movingTab && result.completedIds.includes(operation.tabId))
+                workspace = movedWorkspace;
             try {
                 const latestWindows = await api.getAllNormalWindowsWithTabs();
                 replacements.push(...reconcileTabs(workspace, scopedTabs(latestWindows, incognito)));

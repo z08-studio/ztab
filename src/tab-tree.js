@@ -224,6 +224,7 @@ function empty(title, description, iconName) {
 
 function windowHeading(win, tabs) {
     const heading = node("div", `window-heading ${win.isCurrentWindow ? "current-heading" : "other-heading"}`);
+    heading.dataset.dropWindowId = win.id;
     const left = node("span", "heading-left");
     const title = node("span", "window-title");
     if (selection.active()) left.append(selection.checkbox(tabs, `Select tabs in ${win.label}`, `select-window-${win.id}`));
@@ -284,8 +285,8 @@ function renderTabs() {
         const tabs = section.tabs.filter((tab) => matchesTab(tab, query));
         if (query && !tabs.length)
             continue;
-        // Keep window actions available even when every tab is grouped or hidden.
-        if (!tabs.length && (win.isCurrentWindow || selection.active()))
+        // Empty window headings remain destinations for cross-window dragging.
+        if (!tabs.length && selection.active())
             continue;
         fragment.append(windowHeading(win, tabs));
         tabs.forEach((tab) => fragment.append(renderTabRow(tab)));
@@ -391,6 +392,22 @@ async function finishGroupRename() {
 }
 
 async function dropTab(source, target) {
+    if (target.mode === "move") {
+        const response = await workspaceAction({ action: "move-tab", tabId: source.id,
+            targetWindowId: target.windowId, expectedWindowId: source.windowId, expectedGroupId: source.groupId });
+        if (!response.completedIds.includes(source.id))
+            throw new Error(response.failures[0]?.error || "This tab could not be moved. Refresh and try again.");
+        try { await refreshTree(); }
+        catch {
+            setStatus([response.warning, "Tab moved, but the list could not be refreshed. Use Refresh to update it."].filter(Boolean).join(" "));
+            return;
+        }
+        selectRow(`tab-${source.id}`, true);
+        elements["tab-list"].focus({ preventScroll: true });
+        elements["drag-announcement"].textContent = "Tab moved to another window.";
+        setStatus(response.warning || "Tab moved");
+        return;
+    }
     let operation;
     if (target.tabId !== undefined) {
         operation = { action: "drop-tab", tabId: source.id, targetTabId: target.tabId,
@@ -907,6 +924,7 @@ async function init() {
             const tab = tabById(id);
             return tab && !tab.pinned ? { id, windowId: tab.windowId, groupId: state.workspace.memberships[id] || null } : null;
         },
+        describeWindow: (id) => state.tree.find((win) => win.id === id),
         groupName: (id) => groupById(id)?.name || "group", onStart: closeMenu,
         onDrop: dropTab, onEnd: scheduleRefresh, onError: showActionError
     });

@@ -1317,6 +1317,16 @@ input::placeholder {
     background: var(--accent-soft);
 }
 
+:is(.tab-row, .window-heading)[data-drop="move"] {
+    position: relative;
+    box-shadow: inset 0 0 0 2px var(--accent);
+    background: var(--accent-soft);
+}
+
+.window-heading[data-drop] {
+    position: relative;
+}
+
 :is(.tab-row, .group-header, .ungroup-drop)[data-drop="pending"] {
     box-shadow: inset 0 0 0 1px var(--line);
     background: var(--hover);
