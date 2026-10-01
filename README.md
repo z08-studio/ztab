@@ -12,7 +12,7 @@ Ztab brings your Chrome windows together with three everyday capabilities:
 
 Ztab was previously named TabSpan. The capital Z follows the Z-series naming convention used by Zdraft.
 
-**Version 2.2.0 is prepared for release and manual Chrome Web Store upload.** It adds New Tab actions for the current or another window and updates the optional support address and QR code. Version 2.1.1 is the previous GitHub release. See the [release guide](CHROME_WEB_STORE.md) for package verification, release notes, and rollout status.
+**Version 2.3.0 is prepared for release and manual Chrome Web Store upload.** Drag a tab onto another window's heading or a tab from that window to move it there immediately. Version 2.2.0 is the previous GitHub release. See the [release guide](CHROME_WEB_STORE.md) for package verification, release notes, and rollout status.
 
 Ztab requires **Chrome 123 or later**. Older Chrome installations remain on their previous compatible extension version until Chrome is upgraded.
 
@@ -27,7 +27,7 @@ From the side panel, you can:
 - See which tabs belong to each window.
 - Jump directly to a tab in any window.
 - Create a tab with **+** beside Tabs and Saved, or use **+** on another window's heading to create one there.
-- Move regular tabs between windows.
+- Drag regular tabs onto another window's heading or one of its tabs to move them there immediately.
 - Merge another window into your current window with one click.
 - Close regular tabs without switching windows first.
 - Hide the pinned-tabs section when you want a more compact view.

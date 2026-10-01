@@ -27,6 +27,14 @@ The tests cover:
 
 Real Chrome window metadata and UI behavior are still validated manually by loading the extension in `chrome://extensions`.
 
+## 2.3 release preparation and upgrade
+
+Verified on 2026-10-01 in isolated Chrome for Testing **153.0.8010.12** on macOS. The downloaded GitHub 2.2.0 ZIP matches its published checksum. Replacing it with the prepared **2.3.0** package at the same unpacked path and reloading with Developer mode enabled preserves the extension ID, all seven real tab IDs, three Saved entries, a collection, two group definitions, two pinned copies, pinned origins, and hidden-pins/manual-sort/dismissed-tip preferences. Live membership and order reset as documented.
+
+After upgrading, dragging Python onto another window's heading shows **Move to Window 2**, moves that existing tab, preserves the destination's active page and tab count, and creates no group. New Tab also works. The real drag supplies the refreshed Store cover and marquee; other captures retain their documented versions. The source, final images, and review sheets were visually checked.
+
+`pnpm test` and `pnpm package` pass **170 tests**. All 45 archived runtime files match the source and staging directory; permissions and Chrome 123 minimum remain unchanged. Store delivery, private-mode dragging, native side-panel closure during a last-tab move, and Windows/Linux were not manually repeated. See [the release guide](../CHROME_WEB_STORE.md) for the ZIP checksum and rollout status; local snapshots are under ignored `output/playwright/release-2.3.0/`.
+
 ## 2.1.1 extension name
 
 Verified on 2026-09-18 in isolated Chrome for Testing 153: the extension list and details page show **Ztab: The last tab manager you’ll need.** in full, with the extension enabled at version **2.1.1**. See the [details screenshot](../docs/screenshots/extension-name-2.1.1.png). `pnpm package` passes all **152 tests**; all 45 packaged files match the source and staging directory. Compared with the published 2.1.0 ZIP, only the manifest's name and version change. Store publication remains a separate step.
