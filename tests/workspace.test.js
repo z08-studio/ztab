@@ -375,7 +375,7 @@ test("local tab ordering is backward compatible, stable for new tabs, and does n
     assert.deepEqual(workspace.tabOrder, [21, 21, "12", -1, 11]);
 });
 
-test("dropping across windows creates one virtual group with a unique name and no Chrome mutations", async () => {
+test("explicit group placements create one virtual group with a unique name and no Chrome mutations", async () => {
     const h = harness();
     const first = await h.controller.request(1, {
         action: "drop-tab", tabId: 11, targetTabId: 21, placement: "group",

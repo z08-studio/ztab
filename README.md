@@ -50,14 +50,15 @@ The list holds its positions while you point at it, navigate with the keyboard, 
 
 Groups live directly in **Tabs**. Each group appears once, even when its members come from different windows; each member shows its source window. Regular tabs can belong to one group at a time. Pinned tabs remain separate and cannot be dragged into groups.
 
-- **Create or join a group:** drag a tab onto the center of another tab, hold for 450 ms until the grouping hint appears, and release. A new group starts with an inline name field. Dropping on an existing group's header joins it, including when the group is collapsed.
-- **Arrange tabs:** choose **Manual order**, then drag to a row's top or bottom edge to place the tab before or after it. Ungrouped tabs can be reordered within their original window; dropping beside a grouped tab joins and orders it within that group. Center/header drops can create or join groups in either sort mode.
+- **Move between windows:** drag a regular tab onto another window's heading or one of its regular tabs, then release when **Move to …** appears. The tab immediately moves to the end of that Chrome window, leaves its Ztab group if it had one, and appears in the destination window section. This works in either sort mode without a hold delay; both windows must be eligible regular windows in the same browsing mode.
+- **Create or join a group:** drag a tab onto the center of another tab in the same Chrome window, hold for 450 ms until the grouping hint appears, and release. A new group starts with an inline name field. Dropping on an existing group's header joins it, including when the group is collapsed or its members span windows.
+- **Arrange tabs:** choose **Manual order**, then drag to a row's top or bottom edge to place the tab before or after it. Within the same Chrome window, ungrouped tabs can be reordered and dropping beside a grouped tab joins and orders it within that group. Dropping on a tab from another Chrome window moves the real tab to that window instead. Center/header drops can create or join groups in either sort mode.
 - **Remove a member:** drag it onto **Remove from group**, which appears during the drag, or use its `···` menu. It returns to its original window section.
 - **Manage a group:** click its name or chevron to collapse or expand it. Use its `···` menu to rename inline, edit its name/color/members, switch to its last active tab, or ungroup its tabs.
 
-Clear search before dragging. Releasing over a tab center before the hold completes does nothing; **Escape** cancels a drag. The tab's `···` menu provides **Add to group…**, **Move to group…**, and removal actions without dragging.
+Clear search before dragging. Releasing over a tab center in the same window before the hold completes does nothing; **Escape** cancels a drag. The tab's `···` menu provides **Add to group…**, **Move to group…**, and removal actions without dragging.
 
-Grouping and arranging tabs change only Ztab's list. They never move real tabs between windows, change their Chrome tab-strip order, or alter Chrome's native groups. Use **Move to window…** or **Merge here** when you want to move actual browser tabs.
+Grouping and arranging tabs within a window change only Ztab's list. Cross-window dragging, **Move to window…**, and **Merge here** move actual browser tabs.
 
 Closing a tab removes its membership without a notice or undo action. Empty group names remain. **Ungroup tabs** removes a group while keeping its tabs open; that action offers **Undo**. Membership and local ordering survive panel reloads and service-worker suspension, but are cleared after a browser restart, extension reload, or update. Group definitions remain; groups are not saved sessions.
 

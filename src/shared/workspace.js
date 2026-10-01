@@ -411,7 +411,7 @@ export function applyWorkspaceOperation(current, operation, context) {
             }
             else {
                 if (!groupId && tab.windowId !== target.windowId)
-                    throw new Error("Ungrouped tabs can only be reordered within their own window. Drop onto a tab to group across windows.");
+                    throw new Error("Ungrouped tabs can only be reordered within their own window.");
                 assignTab(workspace, tab.id, groupId || null);
                 moveInOrder(workspace, tabs, tab.id, target.id, operation.placement);
             }

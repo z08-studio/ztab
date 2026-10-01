@@ -1,6 +1,6 @@
 // Pointer capture keeps dragging inside the panel, including while its list
 // scrolls. Mutations are delegated to the workspace's single background writer.
-export function createTabDragController({ root, list, ungroupZone, canDrag, canReorder = () => true, describeTab, groupName, onStart, onDrop, onEnd, onError }) {
+export function createTabDragController({ root, list, ungroupZone, canDrag, canReorder = () => true, describeTab, describeWindow, groupName, onStart, onDrop, onEnd, onError }) {
     let pointer = null;
     let dragging = false;
     let target = null;
@@ -31,7 +31,7 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, canR
 
     function chooseTarget(next) {
         if (!next) { clearTarget(); return; }
-        const key = `${next.mode}:${next.tabId ?? next.groupId ?? ""}`;
+        const key = `${next.mode}:${next.windowId ?? ""}:${next.tabId ?? next.groupId ?? ""}`;
         if (target?.key === key) return;
         clearTarget();
         target = { ...next, key, ready: !next.wait && !next.blocked };
@@ -45,12 +45,26 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, canR
         }
     }
 
+    function chooseWindow(windowId, element, tabId) {
+        const destination = describeWindow(windowId);
+        const source = describeWindow(pointer.source.windowId);
+        if (!destination || !source || windowId === source.id) { clearTarget(); return; }
+        const allowed = source.mergeEligible && destination.mergeEligible && source.incognito === destination.incognito;
+        chooseTarget({ mode: "move", windowId, tabId, element, blocked: !allowed,
+            label: allowed ? `Move to ${destination.label}` : "Expand compact windows to move tabs" });
+    }
+
     function updateTarget() {
         if (!dragging) return;
         const hit = document.elementFromPoint(pointer.x, pointer.y);
         if (!hit || !root.contains(hit)) { clearTarget(); return; }
         if (!ungroupZone.hidden && ungroupZone.contains(hit)) {
             chooseTarget({ mode: "ungroup", element: ungroupZone, label: "Remove from group" });
+            return;
+        }
+        const windowHeading = hit.closest("[data-drop-window-id]");
+        if (windowHeading) {
+            chooseWindow(Number(windowHeading.dataset.dropWindowId), windowHeading);
             return;
         }
         const header = hit.closest("[data-drop-group-id]");
@@ -63,6 +77,12 @@ export function createTabDragController({ root, list, ungroupZone, canDrag, canR
         const row = hit.closest("[data-tab-id]");
         const tab = row?.querySelector("[data-drag-tab-id]") ? describeTab(Number(row.dataset.tabId)) : null;
         if (!tab || tab.id === pointer.source.id) { clearTarget(); return; }
+        // A different real window always means a browser move, including row
+        // edges and grouped members. It must never arm the grouping timer.
+        if (tab.windowId !== pointer.source.windowId) {
+            chooseWindow(tab.windowId, row, tab.id);
+            return;
+        }
         const rect = row.getBoundingClientRect();
         const y = pointer.y - rect.top;
         const edge = y < 8 ? "before" : y > rect.height - 8 ? "after" : null;
